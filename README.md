@@ -2,6 +2,13 @@
 
 Current release at `v0.1.0`.
 
+## Installation
+
+Until then: 
+```bash
+pip install git+https://github.com/geyang/gym-sawyer
+```
+
 ## Usage Example
 
 ```python
@@ -18,4 +25,4 @@ env.render("notebook")
 
 ![figures/PickPlace-v0.png](figures/PickPlace-v0.png)
 
-Ge Yang © 2020
+Ge Yang, Bradly Stadie © 2020

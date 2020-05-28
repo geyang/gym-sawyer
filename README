@@ -1,0 +1,30 @@
+``gym-Sawyer``, a Sawyer plugin for OpenAI Gym
+==============================================
+
+Current release at ``v0.1.0``.
+
+Usage Example
+-------------
+
+.. code-block:: python
+
+   import gym
+
+   env = gym.make("gym_sawyer:PickPlace-v0", width=84, height=84, cam_id=-1)
+
+   env.render("notebook")
+
+.. raw:: html
+
+   <p align="center">
+
+.. raw:: html
+
+   </p>
+
+.. figure:: figures/PickPlace-v0.png?raw=true
+   :alt: figures/PickPlace-v0.png?raw=true
+
+   figures/PickPlace-v0.png?raw=true
+
+Ge Yang © 2020
