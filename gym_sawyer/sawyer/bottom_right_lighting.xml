@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mujoco>
+    <light directional="true" ambient="0.2 0.2 0.2" diffuse="0.8 0.8 0.8" specular="0.3 0.3 0.3" castshadow="false"
+           pos="-0.4 0.2 4" dir="0.1 0.2 -0.1" name="light0"/>
+    <light directional="true" ambient="0.02 0.02 0.02" diffuse="0.8 0.8 0.8" specular="0.3 0.3 0.3"
+           castshadow="false"
+           pos="4 4 1" dir="-0.2 0 -0.25" name="light1"/>
+</mujoco>

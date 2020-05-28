@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+Usage:
+
+<mujoco>
+	<compiler meshdir="../meshes/sawyer" ...></compiler>
+	<include file="shared_config.xml"></include>
+    (new stuff)                                                                                       4
+	<worldbody>
+		<include file="sawyer_xyz_base.xml"></include>
+        (new stuff)
+	</worldbody>
+</mujoco>
+-->
+
+<mujoco>
+    <asset>
+        <!--<texture type="skybox" builtin="gradient" rgb1="0.44 0.85 0.56" rgb2="0.46 0.87 0.58" width="32" height="32"/>-->
+        <!--<texture type="skybox" builtin="gradient" rgb1="0.7 0.7 0.7" rgb2="1 1 1" width="2" height="2"/>-->
+        <texture type="skybox" builtin="gradient" rgb1="0.9 0.7 0.9" rgb2="0.94 0.97 0.97" width="2" height="2"/>
+        <material name="arm_mat" shininess="0.1" specular="0." reflectance="0" rgba="0.65 0.28 0.28 0.8"/>
+        <!--<material name="cap_mat" shininess="0.1" specular="0." reflectance="0" rgba="0.15 0.15 0.15 0.8"/>-->
+        <mesh name="pedestal" file="pedestal.stl"/>
+        <mesh name="base" file="base.stl"/>
+        <mesh name="l0" file="l0.stl"/>
+        <mesh name="head" file="head.stl"/>
+        <mesh name="l1" file="l1.stl"/>
+        <mesh name="l2" file="l2.stl"/>
+        <mesh name="l3" file="l3.stl"/>
+        <mesh name="l4" file="l4.stl"/>
+        <mesh name="l5" file="l5.stl"/>
+        <mesh name="l6" file="l6.stl"/>
+        <mesh name="eGripperBase" file="eGripperBase.stl"/>
+    </asset>
+
+    <visual>
+        <headlight ambient="0.05 0.05 0.05"/>
+    </visual>
+
+    <compiler inertiafromgeom="auto" angle="radian" coordinate="local" eulerseq="XYZ" meshdir="meshes"/>
+    <size njmax="6000" nconmax="6000"/>
+    <option
+            gravity="0 0 -9.81"
+            iterations="50"
+            integrator="Euler"
+            timestep="0.01"
+            cone="elliptic"
+            impratio="3"
+            tolerance="1e-10"
+    />
+
+    <default>
+        <joint limited="true"
+               damping="1"
+               stiffness="0"
+               armature=".1"
+               user="0"/>
+        <geom solref="0.02 1" solimp="0.9995 0.9995 0.01" condim="4"/>
+        <motor ctrllimited="true" ctrlrange="-1 1"/>
+        <position ctrllimited="true"/>
+
+        <!--  <default class='0'>
+             <geom friction="1 0.005 0.001" rgba=".75 .6 .5 1"
+                   contype="1" conaffinity="0"/>
+         </default>
+
+         <default class='1'>
+             <geom friction="1 0.005 0.001" rgba=".7 .6 .55 1"
+                   contype="4" conaffinity="2"/>
+         </default>
+
+         <default class='arm'>
+             <joint damping="5"/>
+         </default> -->
+    </default>
+
+    <equality>
+        <weld body1="mocap" body2="hand" solref="0.02 1"></weld>
+    </equality>
+</mujoco>
