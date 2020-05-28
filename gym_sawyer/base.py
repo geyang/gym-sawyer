@@ -68,6 +68,7 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
             mocap_high=(0.1, 0.7, 0.6),
             effector_quat=(1, 0, 1, 0),
             action_scale=1 / 100,
+            show_mocap=True,
             **kwargs
     ):
         super().__init__(*args, **kwargs)
@@ -76,6 +77,17 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
         # note: separate mocap range vs object range.
         self.mocap_low = np.hstack(mocap_low)
         self.mocap_high = np.hstack(mocap_high)
+
+        if not show_mocap:
+            self.hide_mocap()
+
+    def hide_mocap(self):
+        # 22 rightclaw
+        # 23 leftclaw
+        # 24 right_l4_2
+        # 25 right_l2_2
+        # 26 right_l1_2
+        self.sim.model.geom_rgba[-6:-1] = 0
 
     def set_xyz_action(self, action):
         action = np.clip(action, -1, 1)
