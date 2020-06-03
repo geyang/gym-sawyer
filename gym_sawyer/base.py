@@ -82,12 +82,8 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
             self.hide_mocap()
 
     def hide_mocap(self):
-        # 22 rightclaw
-        # 23 leftclaw
-        # 24 right_l4_2
-        # 25 right_l2_2
-        # 26 right_l1_2
-        self.sim.model.geom_rgba[-6:-1] = 0
+        self.sim.model.geom_rgba[3:21] = 0
+        self.sim.model.geom_rgba[33:37] = 0
 
     def set_xyz_action(self, action):
         action = np.clip(action, -1, 1)
@@ -101,6 +97,14 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
         self.data.set_mocap_pos('mocap', new_mocap_pos)
         self.data.set_mocap_quat('mocap', self.effector_quat)
 
+    def _reset_hand(self, pos=None):
+        if pos is None:
+            pos = self.hand_init_pos
+        for _ in range(10):
+            self.data.set_mocap_pos('mocap', pos)
+            self.data.set_mocap_quat('mocap', self.effector_quat)
+            self.do_simulation(None, self.frame_skip)
+
 
 class SawyerCamEnv(metaclass=abc.ABCMeta):
     def __init__(self, *args, cam_id=None, width=100, height=100, **kwargs):
@@ -109,6 +113,7 @@ class SawyerCamEnv(metaclass=abc.ABCMeta):
         self.height = height
 
     def viewer_setup(self, cam_id=None):
+        cam_id = self.cam_id if cam_id is None else cam_id
         camera = self.viewer.cam
         if cam_id == -1:
             camera.fixedcamid = cam_id

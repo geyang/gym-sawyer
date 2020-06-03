@@ -1,4 +1,3 @@
 from . import pick_place
-from . import door_multitask
+from . import door
 from . import mixed_env
-

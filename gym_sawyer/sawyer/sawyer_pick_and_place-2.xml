@@ -4,6 +4,7 @@
     <worldbody>
         <include file="sawyer_xyz_base.xml"/>
         <include file="bottom_right_lighting.xml"/>
+        <include file="front_left_lighting.xml"/>
         <body name="obj_0" pos="0 0.6 0.02">
             <joint name="obj_0" type="free" limited='false' damping="0" armature="0"/>
             <inertial pos="0 0 0" mass="0.01" diaginertia="100000 100000 100000"/>
@@ -17,20 +18,6 @@
             <geom name="obj_1" type="box" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0.5 0.5 0.8" contype="1"
                   conaffinity="1" friction="2 0.1 0.002" condim="4"/>
         </body>
-        <body name="obj_2" pos="-0.1 0.6 0.02">
-            <joint name="obj_2" type="free" limited='false' damping="0" armature="0"/>
-            <inertial pos="0 0 0" mass="0.01" diaginertia="100000 100000 100000"/>
-            <geom name="obj_2" type="box" pos="0 0 0" size="0.02 0.02 0.02" rgba="0.3 0.8 0.3 0.8" contype="1"
-                  conaffinity="1" friction="2 0.1 0.002" condim="4"/>
-        </body>
-        <body name="obj_3" pos="0.2 0.6 0.02">
-            <joint name="obj_3" type="free" limited='false' damping="0" armature="0"/>
-            <inertial pos="0 0 0" mass="0.01" diaginertia="100000 100000 100000"/>
-            <geom name="obj_3" type="box" pos="0 0 0" size="0.02 0.02 0.02" rgba="0.4 0.4 0.4 1" contype="1"
-                  conaffinity="1" friction="2 0.1 0.002" condim="4"/>
-        </body>
-        <site name="hand-goal-site" pos="0 0 0" size="0.01" rgba="1 0 0 0.3"/>
-        <site name="obj-goal-site" pos="0 0.5 0.2" size="0.01" rgba="0 0.5 1 1"/>
     </worldbody>
     <sensor>
         <touch name='rightclaw_sensor' site='rightEndEffector'/>
@@ -38,6 +25,7 @@
     </sensor>
     <actuator>
         <motor ctrllimited="true" ctrlrange="-1 1" gear="200" joint="r_close"/>
+
         <motor ctrllimited="true" ctrlrange="-1 1" gear="200" joint="l_close"/>
     </actuator>
 </mujoco>

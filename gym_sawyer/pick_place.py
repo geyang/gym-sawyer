@@ -7,14 +7,21 @@ from .env_util import get_stat_in_paths, create_stats_ordered_dict, get_asset_fu
 from .multitask_env import MultitaskEnv
 from .base import SawyerXYZEnv, SawyerCamEnv
 
+ALL_TASKS = [
+    "pick",
+    "pick_place",
+    "stack"
+]
+
 
 class SawyerPickAndPlaceEnv(MultitaskEnv, SawyerXYZEnv, SawyerCamEnv):
 
     def __init__(
             self,
+            task=None,
+            num_objs=2,
             obj_low=None,
             obj_high=None,
-            # reward_type='hand_and_obj_distance',
             reward_type=None,
             indicator_threshold=0.06,
             shaped_init=False,  # reset with 50% with object in hand.
@@ -30,10 +37,13 @@ class SawyerPickAndPlaceEnv(MultitaskEnv, SawyerXYZEnv, SawyerCamEnv):
             # action_scale: passed into position control.
             **kwargs
     ):
-        self.horizon = 200
-        self.cur_step = 0
+        self.task = task
+        self.num_objs = num_objs
+
+        model_name = get_asset_full_path(f'sawyer_pick_and_place-{num_objs}.xml')
+
         MultitaskEnv.__init__(self)
-        SawyerXYZEnv.__init__(self, model_name=self.model_name, **kwargs)
+        SawyerXYZEnv.__init__(self, model_name=model_name, **kwargs)
         SawyerCamEnv.__init__(self, cam_id=cam_id, width=width, height=height)
 
         self.shaped_init = shaped_init
@@ -86,10 +96,8 @@ class SawyerPickAndPlaceEnv(MultitaskEnv, SawyerXYZEnv, SawyerCamEnv):
             ('state_gripper', self.gripper_space),
         ])
 
-    model_name = get_asset_full_path('sawyer_pick_and_place.xml')
-
     def viewer_setup(self, cam_id=None):
-        SawyerCamEnv.viewer_setup(self, self.cam_id if cam_id is None else cam_id)
+        SawyerCamEnv.viewer_setup(self, cam_id)
 
         camera = self.viewer.cam
 
@@ -105,16 +113,11 @@ class SawyerPickAndPlaceEnv(MultitaskEnv, SawyerXYZEnv, SawyerCamEnv):
         self.set_xyz_action(action[:3])
         self.do_simulation((action[3], -action[3]))
         # The marker seems to get reset every time you do a simulation
-        self._set_goal_marker()
+        # self._set_goal_marker()
         ob = self._get_obs()
         reward = self.compute_reward(action, ob)
         info = self._get_info(ob)
         done = False
-        self.cur_step += 1
-        if self.cur_step > self.horizon:
-            self.cur_step = 0
-            done = True
-            # print(done)
         return ob, reward, done, info
 
     def _get_obs(self):
@@ -124,31 +127,32 @@ class SawyerPickAndPlaceEnv(MultitaskEnv, SawyerXYZEnv, SawyerCamEnv):
         l, r = self.get_gripper_pos()
         flat_obs = np.concatenate((e, b, dot))
 
-        return dict(
+        obs = dict(
             observation=flat_obs,
-            desired_goal=self._state_goal,
+            # desired_goal=self._state_goal,
             achieved_goal=flat_obs[:6],
             state_observation=flat_obs,
-            state_desired_goal=self._state_goal,
+            # state_desired_goal=self._state_goal,
             state_achieved_goal=flat_obs[:6],
-            state_delta=flat_obs[:6] - self._state_goal,
+            # state_delta=flat_obs[:6] - self._state_goal,
             state_touch_distance=flat_obs[:3] - [0, 0, 0.03] - flat_obs[3:6],
             state_gripper=np.concatenate([l[:2] - e[:2], r[:2] - e[:2]])
         )
+        return obs
 
     PICK_REACH_KEYS = ('pick_reach_sparse', 'pick_reach_dense',)
 
     def _get_info(self, ob):
-        achieved_goals = ob['state_achieved_goal']
-        desired_goals = ob['state_desired_goal']
-        obj_pos = achieved_goals[3:6]
-        obj_goals = desired_goals[3:6]
-        if self.reward_type in self.PICK_REACH_KEYS:
-            obj_dist = np.linalg.norm(obj_goals - obj_pos, axis=-1)
-            is_successful = obj_dist < 0.02
-            return dict(success=is_successful)
-        else:
-            return {}
+        # achieved_goals = ob['state_achieved_goal']
+        # desired_goals = ob['state_desired_goal']
+        # obj_pos = achieved_goals[3:6]
+        # obj_goals = desired_goals[3:6]
+        # if self.reward_type in self.PICK_REACH_KEYS:
+        #     obj_dist = np.linalg.norm(obj_goals - obj_pos, axis=-1)
+        #     is_successful = obj_dist < 0.02
+        #     return dict(success=is_successful)
+        # else:
+        return {}
 
     def get_obj_pos(self):
         return self.data.get_body_xpos('obj_0').copy()
@@ -192,7 +196,7 @@ class SawyerPickAndPlaceEnv(MultitaskEnv, SawyerXYZEnv, SawyerCamEnv):
     def reset_model(self):
         goal = self.sample_goal()
         self._state_goal = goal['state_desired_goal']
-        self._set_goal_marker()
+        # self._set_goal_marker()
 
         # initialized with the object in the gripper at 50%
         if self.shaped_init and np.random.rand() < self.shaped_init:
@@ -204,14 +208,6 @@ class SawyerPickAndPlaceEnv(MultitaskEnv, SawyerXYZEnv, SawyerCamEnv):
             self._reset_hand()
             self._set_obj_xyz(obj_goal)
         return self._get_obs()
-
-    def _reset_hand(self, pos=None):
-        if pos is None:
-            pos = self.hand_init_pos
-        for _ in range(10):
-            self.data.set_mocap_pos('mocap', pos)
-            self.data.set_mocap_quat('mocap', self.effector_quat)
-            self.do_simulation(None, self.frame_skip)
 
     def put_obj_in_hand(self):
         new_obj_pos = self.data.get_site_xpos('endEffector')
@@ -262,110 +258,111 @@ class SawyerPickAndPlaceEnv(MultitaskEnv, SawyerXYZEnv, SawyerCamEnv):
         }
 
     def compute_rewards(self, actions, obs):
-        achieved_goals = obs['state_achieved_goal']
-        desired_goals = obs['state_desired_goal']
-        assert np.isclose(obs['state_achieved_goal'], obs['observation'][:, :6]).all(), 'need to be close'
-        gripper_state = obs['state_gripper']
-        hand_pos = achieved_goals[:, :3]
-        obj_pos = achieved_goals[:, 3:6]
-        hand_goals = desired_goals[:, :3]
-        obj_goals = desired_goals[:, 3:6]
-        hand_vel = achieved_goals[:, 6:]
-
-        hand_distances = np.linalg.norm(hand_goals - hand_pos, axis=1)
-        obj_distances = np.linalg.norm(obj_goals - obj_pos, axis=1)
-        hand_and_obj_distances = hand_distances + obj_distances
-        touch_distances = np.linalg.norm(hand_pos - obj_pos, axis=1)
-        touch_and_obj_distance = touch_distances + obj_distances
-
-        if self.reward_type is None:
-            r = [0.0] * len(obs)
-        elif self.reward_type == 'hand_distance':
-            r = -hand_distances
-        elif self.reward_type == 'hand_success':
-            r = -(hand_distances < self.indicator_threshold).astype(float)
-        elif self.reward_type == 'obj_distance':
-            r = -obj_distances
-        elif self.reward_type == 'obj_success':
-            r = -(obj_distances < self.indicator_threshold).astype(float)
-        elif self.reward_type == 'hand_and_obj_distance':
-            r = -hand_and_obj_distances
-        elif self.reward_type == 'hand_and_obj_success':
-            r = -(hand_and_obj_distances < self.indicator_threshold).astype(float)
-        elif self.reward_type == 'touch_distance':
-            r = -touch_distances
-        elif self.reward_type == 'touch_success':
-            r = -(touch_distances < self.indicator_threshold).astype(float)
-        elif self.reward_type == 'touch_and_obj_distance':
-            r = -touch_and_obj_distance
-        # start of Ge's shaped rewards
-        elif self.reward_type == 'reach_dense':
-            r = -hand_distances
-        elif self.reward_type == 'hover_dense':
-            _ = obj_pos - hand_pos + [0, 0, 0.03] + [0, 0, 0.05]
-            _ = np.linalg.norm(_, axis=1)
-            r = -_
-        elif self.reward_type == 'touch_dense':
-            offset = np.zeros_like(hand_pos)
-            offset[:, -1] = - 0.03
-            offset[:, :2] = (gripper_state[:, :2] + gripper_state[:, 2:]) / 2
-            _ = obj_pos - (hand_pos + offset)
-            touch_distances = np.linalg.norm(_, axis=1)
-            touch_distances_xy = np.linalg.norm(_[:, :2], axis=1)
-            gripper_opening = np.linalg.norm(gripper_state[:, :2] - gripper_state[:, 2:])
-            dh = 0.1 - hand_pos[:, -1]
-            h = hand_pos[:, -1] - 0.04 - 0.03
-            opening = (gripper_opening - 0.04) / 2 + h * 1
-            r = -touch_distances - (0 if touch_distances_xy < opening else 10) * np.maximum(dh, 0)
-        # todo: make prong open
-        elif self.reward_type == 'push_dense':
-            _ = hand_pos - [0, 0, 0.03] - obj_pos
-            touch_distances = np.linalg.norm(_, axis=1)
-            r = -touch_distances - obj_distances
-        elif self.reward_type == 'pick_dense':
-            shape_fn = lambda x: np.select([x > -0.3], [10 * (x + 0.3) ** 2 + x], x)
-            offset = np.zeros_like(hand_pos)
-            offset[:, -1] = - 0.03
-            offset[:, :2] = (gripper_state[:, :2] + gripper_state[:, 2:]) / 2
-            _ = obj_pos - (hand_pos + offset)
-            touch_distances = np.linalg.norm(_, axis=1)
-            touch_distances_xy = np.linalg.norm(_[:, :2], axis=1)
-            gripper_opening = np.linalg.norm(gripper_state[:, :2] - gripper_state[:, 2:])
-            dh = 0.083 - hand_pos[:, -1]
-            opening = 0.02
-            height_penalty = (-10 if touch_distances_xy > opening else 0) * np.maximum(dh, 0)
-            grip_reward = (5 * (0.1 - gripper_opening)) if touch_distances_xy < opening and (
-                    hand_pos[:, -1] - obj_pos[:, -1]) < 0.065 else ((gripper_opening - 0.1) * 5)
-            # add all rewards
-            r = shape_fn(-touch_distances)
-            r += height_penalty
-            r += grip_reward
-        elif self.reward_type == 'pick_reach_dense':
-            shape_fn = lambda x: np.select([x > -0.3], [10 * (x + 0.3) ** 2 + x], x)
-            offset = np.zeros_like(hand_pos)
-            offset[:, -1] = - 0.03
-            offset[:, :2] = (gripper_state[:, :2] + gripper_state[:, 2:]) / 2
-            _ = obj_pos - (hand_pos + offset)
-            touch_distances = np.linalg.norm(_, axis=1)
-            touch_distances_xy = np.linalg.norm(_[:, :2], axis=1)
-            gripper_opening = np.linalg.norm(gripper_state[:, :2] - gripper_state[:, 2:])
-            dh = 0.083 - hand_pos[:, -1]
-            opening = 0.02
-            height_penalty = (-10 if touch_distances_xy > opening else 0) * np.maximum(dh, 0)
-            obj_reward = -np.minimum(obj_distances, 1.5)  # clip in case of block falling off the table.
-            grip_reward = (5 * (0.1 - gripper_opening)) if touch_distances_xy < opening and (
-                    hand_pos[:, -1] - obj_pos[:, -1]) < 0.065 else ((gripper_opening - 0.1) * 5)
-            # add all rewards
-            r = shape_fn(-touch_distances)
-            r += height_penalty
-            r += grip_reward
-            r += obj_reward * 5
-        elif self.reward_type == 'pick_place_dense':
-            raise NotImplemented
-        # end of Ge's shaped rewards
-        else:
-            raise NotImplementedError("Invalid/no reward type.")
-        return r
+        return [0] * len(actions)
+        # achieved_goals = obs['state_achieved_goal']
+        # desired_goals = obs['state_desired_goal']
+        # assert np.isclose(obs['state_achieved_goal'], obs['observation'][:, :6]).all(), 'need to be close'
+        # gripper_state = obs['state_gripper']
+        # hand_pos = achieved_goals[:, :3]
+        # obj_pos = achieved_goals[:, 3:6]
+        # hand_goals = desired_goals[:, :3]
+        # obj_goals = desired_goals[:, 3:6]
+        # hand_vel = achieved_goals[:, 6:]
+        #
+        # hand_distances = np.linalg.norm(hand_goals - hand_pos, axis=1)
+        # obj_distances = np.linalg.norm(obj_goals - obj_pos, axis=1)
+        # hand_and_obj_distances = hand_distances + obj_distances
+        # touch_distances = np.linalg.norm(hand_pos - obj_pos, axis=1)
+        # touch_and_obj_distance = touch_distances + obj_distances
+        #
+        # if self.reward_type is None:
+        #     r = [0.0] * len(obs)
+        # elif self.reward_type == 'hand_distance':
+        #     r = -hand_distances
+        # elif self.reward_type == 'hand_success':
+        #     r = -(hand_distances < self.indicator_threshold).astype(float)
+        # elif self.reward_type == 'obj_distance':
+        #     r = -obj_distances
+        # elif self.reward_type == 'obj_success':
+        #     r = -(obj_distances < self.indicator_threshold).astype(float)
+        # elif self.reward_type == 'hand_and_obj_distance':
+        #     r = -hand_and_obj_distances
+        # elif self.reward_type == 'hand_and_obj_success':
+        #     r = -(hand_and_obj_distances < self.indicator_threshold).astype(float)
+        # elif self.reward_type == 'touch_distance':
+        #     r = -touch_distances
+        # elif self.reward_type == 'touch_success':
+        #     r = -(touch_distances < self.indicator_threshold).astype(float)
+        # elif self.reward_type == 'touch_and_obj_distance':
+        #     r = -touch_and_obj_distance
+        # # start of Ge's shaped rewards
+        # elif self.reward_type == 'reach_dense':
+        #     r = -hand_distances
+        # elif self.reward_type == 'hover_dense':
+        #     _ = obj_pos - hand_pos + [0, 0, 0.03] + [0, 0, 0.05]
+        #     _ = np.linalg.norm(_, axis=1)
+        #     r = -_
+        # elif self.reward_type == 'touch_dense':
+        #     offset = np.zeros_like(hand_pos)
+        #     offset[:, -1] = - 0.03
+        #     offset[:, :2] = (gripper_state[:, :2] + gripper_state[:, 2:]) / 2
+        #     _ = obj_pos - (hand_pos + offset)
+        #     touch_distances = np.linalg.norm(_, axis=1)
+        #     touch_distances_xy = np.linalg.norm(_[:, :2], axis=1)
+        #     gripper_opening = np.linalg.norm(gripper_state[:, :2] - gripper_state[:, 2:])
+        #     dh = 0.1 - hand_pos[:, -1]
+        #     h = hand_pos[:, -1] - 0.04 - 0.03
+        #     opening = (gripper_opening - 0.04) / 2 + h * 1
+        #     r = -touch_distances - (0 if touch_distances_xy < opening else 10) * np.maximum(dh, 0)
+        # # todo: make prong open
+        # elif self.reward_type == 'push_dense':
+        #     _ = hand_pos - [0, 0, 0.03] - obj_pos
+        #     touch_distances = np.linalg.norm(_, axis=1)
+        #     r = -touch_distances - obj_distances
+        # elif self.reward_type == 'pick_dense':
+        #     shape_fn = lambda x: np.select([x > -0.3], [10 * (x + 0.3) ** 2 + x], x)
+        #     offset = np.zeros_like(hand_pos)
+        #     offset[:, -1] = - 0.03
+        #     offset[:, :2] = (gripper_state[:, :2] + gripper_state[:, 2:]) / 2
+        #     _ = obj_pos - (hand_pos + offset)
+        #     touch_distances = np.linalg.norm(_, axis=1)
+        #     touch_distances_xy = np.linalg.norm(_[:, :2], axis=1)
+        #     gripper_opening = np.linalg.norm(gripper_state[:, :2] - gripper_state[:, 2:])
+        #     dh = 0.083 - hand_pos[:, -1]
+        #     opening = 0.02
+        #     height_penalty = (-10 if touch_distances_xy > opening else 0) * np.maximum(dh, 0)
+        #     grip_reward = (5 * (0.1 - gripper_opening)) if touch_distances_xy < opening and (
+        #             hand_pos[:, -1] - obj_pos[:, -1]) < 0.065 else ((gripper_opening - 0.1) * 5)
+        #     # add all rewards
+        #     r = shape_fn(-touch_distances)
+        #     r += height_penalty
+        #     r += grip_reward
+        # elif self.reward_type == 'pick_reach_dense':
+        #     shape_fn = lambda x: np.select([x > -0.3], [10 * (x + 0.3) ** 2 + x], x)
+        #     offset = np.zeros_like(hand_pos)
+        #     offset[:, -1] = - 0.03
+        #     offset[:, :2] = (gripper_state[:, :2] + gripper_state[:, 2:]) / 2
+        #     _ = obj_pos - (hand_pos + offset)
+        #     touch_distances = np.linalg.norm(_, axis=1)
+        #     touch_distances_xy = np.linalg.norm(_[:, :2], axis=1)
+        #     gripper_opening = np.linalg.norm(gripper_state[:, :2] - gripper_state[:, 2:])
+        #     dh = 0.083 - hand_pos[:, -1]
+        #     opening = 0.02
+        #     height_penalty = (-10 if touch_distances_xy > opening else 0) * np.maximum(dh, 0)
+        #     obj_reward = -np.minimum(obj_distances, 1.5)  # clip in case of block falling off the table.
+        #     grip_reward = (5 * (0.1 - gripper_opening)) if touch_distances_xy < opening and (
+        #             hand_pos[:, -1] - obj_pos[:, -1]) < 0.065 else ((gripper_opening - 0.1) * 5)
+        #     # add all rewards
+        #     r = shape_fn(-touch_distances)
+        #     r += height_penalty
+        #     r += grip_reward
+        #     r += obj_reward * 5
+        # elif self.reward_type == 'pick_place_dense':
+        #     raise NotImplemented
+        # # end of Ge's shaped rewards
+        # else:
+        #     raise NotImplementedError("Invalid/no reward type.")
+        # return r
 
     def get_diagnostics(self, paths, prefix=''):
         statistics = OrderedDict()
@@ -402,7 +399,14 @@ class SawyerPickAndPlaceEnv(MultitaskEnv, SawyerXYZEnv, SawyerCamEnv):
         base_state, goal = state
         super().set_env_state(base_state)
         self._state_goal = goal
-        self._set_goal_marker()
+        # self._set_goal_marker()
+
+    def render(self, mode, **kwargs):
+        if mode == "glamor":
+            self.sim.model.light_active[:2] = False
+            self.sim.model.light_active[2:] = True
+            mode = "rgb"
+        return SawyerXYZEnv.render(self, mode, **kwargs)
 
 
 def pick_place_env(**kwargs):
@@ -416,103 +420,103 @@ def pick_place_env(**kwargs):
 from gym.envs import register
 
 # note: kwargs are not passed in to the constructor when entry_point is a function.
-register(
-    id="Reach-v0",
-    entry_point=pick_place_env,
-    kwargs=dict(frame_skip=5, reward_type="reach_dense",
-                mocap_low=(-0.05, 0.35, 0.05),
-                mocap_high=(0.45, 0.7, 0.35),
-                obj_low=(0.05, 0.45, 0.02),
-                obj_high=(0.35, 0.6, 0.02)
-                ),
-    max_episode_steps=100,
-    reward_threshold=-3.75,
-)
-
-register(
-    id="Hover-v0",
-    entry_point=pick_place_env,
-    # confined to the 2D plane.
-    kwargs=dict(frame_skip=5, reward_type="hover_dense",
-                mocap_low=(-0.05, 0.35, 0.05),
-                mocap_high=(0.45, 0.7, 0.35),
-                obj_low=(0.05, 0.45, 0.02),
-                obj_high=(0.35, 0.6, 0.02)
-                ),
-    max_episode_steps=100,
-    reward_threshold=-3.75,
-)
-register(
-    id="HoverRotated-v0",
-    entry_point=pick_place_env,
-    # confined to the 2D plane.
-    kwargs=dict(frame_skip=5, reward_type="hover_dense",
-                effector_quat=(0.5, -0.5, 0.5, 0.5,),
-                mocap_low=(-0.05, 0.35, 0.05),
-                mocap_high=(0.45, 0.7, 0.35),
-                obj_low=(0.05, 0.45, 0.02),
-                obj_high=(0.35, 0.6, 0.02)
-                ),
-    max_episode_steps=100,
-    reward_threshold=-3.75,
-)
-register(
-    id="Touch-v0",
-    entry_point=pick_place_env,
-    # confined to the 2D plane.
-    kwargs=dict(frame_skip=5, reward_type="touch_dense",
-                mocap_low=(-0.05, 0.35, 0.05),
-                mocap_high=(0.45, 0.7, 0.35),
-                obj_low=(0.05, 0.45, 0.02),
-                obj_high=(0.35, 0.6, 0.02)
-                ),
-    max_episode_steps=100,
-    reward_threshold=-3.75,
-)
-register(
-    id="Push-v0",
-    entry_point=pick_place_env,
-    # confined to the 2D plane.
-    kwargs=dict(frame_skip=5, reward_type="push_dense",
-                mocap_low=(-0.05, 0.35, 0.05),
-                mocap_high=(0.45, 0.7, 0.35),
-                obj_low=(0.05, 0.45, 0.02),
-                obj_high=(0.35, 0.6, 0.02)
-                ),
-    max_episode_steps=100,
-    reward_threshold=-3.75,
-)
-register(
-    id="Pick-v0",
-    entry_point=pick_place_env,
-    # Block goal can be in the air.
-    kwargs=dict(frame_skip=5, reward_type="pick_dense",
-                mocap_low=(-0.05, 0.35, 0.035),
-                mocap_high=(0.45, 0.7, 0.35),
-                obj_low=(0.05, 0.45, 0.02),
-                obj_high=(0.35, 0.6, 0.02)
-                ),
-    max_episode_steps=100,
-    reward_threshold=-3.75,
-)
-register(
-    id="PickReach-v0",
-    entry_point=pick_place_env,
-    # Block goal can be in the air.
-    kwargs=dict(frame_skip=5,
-                reward_type="pick_reach_dense",
-                mocap_low=(-0.05, 0.35, 0.035),
-                mocap_high=(0.45, 0.7, 0.35),
-                obj_low=(0.05, 0.45, 0.1),
-                obj_high=(0.35, 0.6, 0.30),
-                shaped_init=0.5,
-                ),
-    max_episode_steps=100,
-    reward_threshold=-3.75,
-)
+# register(
+#     id="Reach-v0",
+#     entry_point=pick_place_env,
+#     kwargs=dict(frame_skip=5, reward_type="reach_dense",
+#                 mocap_low=(-0.05, 0.35, 0.05),
+#                 mocap_high=(0.45, 0.7, 0.35),
+#                 obj_low=(0.05, 0.45, 0.02),
+#                 obj_high=(0.35, 0.6, 0.02)
+#                 ),
+#     max_episode_steps=100,
+#     reward_threshold=-3.75,
+# )
+#
+# register(
+#     id="Hover-v0",
+#     entry_point=pick_place_env,
+#     # confined to the 2D plane.
+#     kwargs=dict(frame_skip=5, reward_type="hover_dense",
+#                 mocap_low=(-0.05, 0.35, 0.05),
+#                 mocap_high=(0.45, 0.7, 0.35),
+#                 obj_low=(0.05, 0.45, 0.02),
+#                 obj_high=(0.35, 0.6, 0.02)
+#                 ),
+#     max_episode_steps=100,
+#     reward_threshold=-3.75,
+# )
+# register(
+#     id="HoverRotated-v0",
+#     entry_point=pick_place_env,
+#     # confined to the 2D plane.
+#     kwargs=dict(frame_skip=5, reward_type="hover_dense",
+#                 effector_quat=(0.5, -0.5, 0.5, 0.5,),
+#                 mocap_low=(-0.05, 0.35, 0.05),
+#                 mocap_high=(0.45, 0.7, 0.35),
+#                 obj_low=(0.05, 0.45, 0.02),
+#                 obj_high=(0.35, 0.6, 0.02)
+#                 ),
+#     max_episode_steps=100,
+#     reward_threshold=-3.75,
+# )
+# register(
+#     id="Touch-v0",
+#     entry_point=pick_place_env,
+#     # confined to the 2D plane.
+#     kwargs=dict(frame_skip=5, reward_type="touch_dense",
+#                 mocap_low=(-0.05, 0.35, 0.05),
+#                 mocap_high=(0.45, 0.7, 0.35),
+#                 obj_low=(0.05, 0.45, 0.02),
+#                 obj_high=(0.35, 0.6, 0.02)
+#                 ),
+#     max_episode_steps=100,
+#     reward_threshold=-3.75,
+# )
+# register(
+#     id="Push-v0",
+#     entry_point=pick_place_env,
+#     # confined to the 2D plane.
+#     kwargs=dict(frame_skip=5, reward_type="push_dense",
+#                 mocap_low=(-0.05, 0.35, 0.05),
+#                 mocap_high=(0.45, 0.7, 0.35),
+#                 obj_low=(0.05, 0.45, 0.02),
+#                 obj_high=(0.35, 0.6, 0.02)
+#                 ),
+#     max_episode_steps=100,
+#     reward_threshold=-3.75,
+# )
+# register(
+#     id="Pick-v0",
+#     entry_point=pick_place_env,
+#     # Block goal can be in the air.
+#     kwargs=dict(frame_skip=5, reward_type="pick_dense",
+#                 mocap_low=(-0.05, 0.35, 0.035),
+#                 mocap_high=(0.45, 0.7, 0.35),
+#                 obj_low=(0.05, 0.45, 0.02),
+#                 obj_high=(0.35, 0.6, 0.02)
+#                 ),
+#     max_episode_steps=100,
+#     reward_threshold=-3.75,
+# )
+# register(
+#     id="PickReach-v0",
+#     entry_point=SawyerPickAndPlaceEnv,
+#     # Block goal can be in the air.
+#     kwargs=dict(frame_skip=5,
+#                 reward_type="pick_reach_dense",
+#                 mocap_low=(-0.05, 0.35, 0.035),
+#                 mocap_high=(0.45, 0.7, 0.35),
+#                 obj_low=(0.05, 0.45, 0.1),
+#                 obj_high=(0.35, 0.6, 0.30),
+#                 shaped_init=0.5,
+#                 ),
+#     # max_episode_steps=100,
+#     reward_threshold=-3.75,
+# )
 register(
     id="PickPlace-v0",
-    entry_point=pick_place_env,
+    entry_point=SawyerPickAndPlaceEnv,
     # Place goal has to be on the surface.
     kwargs=dict(frame_skip=5,
                 # reward_type="pick_place_dense",
@@ -521,6 +525,6 @@ register(
                 obj_low=(0.05, 0.45, 0.02),
                 obj_high=(0.05, 0.55, 0.02)
                 ),
-    max_episode_steps=100,
+    # max_episode_steps=100,
     reward_threshold=-3.75,
 )

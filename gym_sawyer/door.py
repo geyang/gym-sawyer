@@ -48,15 +48,20 @@ class SawyerDoorMultitaskEnv(MultitaskEnv, SawyerXYZEnv, SawyerCamEnv):
     def __init__(
             self,
             k_tasks=1,
+            num_doors=1,
             sample_task_on_reset=False,
-            hand_init_pos=None,
+            hand_init_pos=(0.2, 0.525, 0.2),
             reward_type="door_dense",
             cam_id=-1, width=84, height=84,
             **kwargs
     ):
+        self.num_doors = num_doors
         self.controls = Controls(k_tasks=k_tasks)
+
+        model_name = get_asset_full_path(f'sawyer_door-{self.num_doors}.xml')
+
         MultitaskEnv.__init__(self)
-        SawyerXYZEnv.__init__(self, model_name=self.model_name, **kwargs)
+        SawyerXYZEnv.__init__(self, model_name=model_name, **kwargs)
         SawyerCamEnv.__init__(self, cam_id=cam_id, width=width, height=height)
 
         self.sample_task_on_reset = sample_task_on_reset
@@ -66,7 +71,7 @@ class SawyerDoorMultitaskEnv(MultitaskEnv, SawyerXYZEnv, SawyerCamEnv):
             np.array([-1, -1, -1, -1]),
             np.array([1, 1, 1, 1]),
         )
-        self.hand_space = Box(self.hand_low, self.hand_high)
+        self.hand_space = Box(self.mocap_low, self.mocap_high)
         self.door_space = Box(np.array([0, 0] * self.controls.k),
                               np.array([1, 1] * self.controls.k))
         self.hand_door_delta_space = Box(np.array([-1] * self.controls.k * 3),
@@ -91,26 +96,17 @@ class SawyerDoorMultitaskEnv(MultitaskEnv, SawyerXYZEnv, SawyerCamEnv):
             task_id=self.task_space,
         ))
 
-    @property
-    def model_name(self):
-        # if self.controls.k == 1:
-        #    print("lllll")
-        #    return get_asset_full_path(f'sawyer_door.xml')
-        # elif self.controls.k == 3:
-        #    print("zzzzz")
-        return get_asset_full_path(f'sawyer_door_multitask.xml')
-        # else:
-        #    raise NotImplemented
-
     def viewer_setup(self, cam_id=None):
         SawyerCamEnv.viewer_setup(self, cam_id)
 
-        self.viewer.cam.lookat[0] = 0
-        self.viewer.cam.lookat[1] = .65
-        self.viewer.cam.lookat[2] = 0.2
-        self.viewer.cam.distance = 1.6
-        self.viewer.cam.elevation = -15
-        self.viewer.cam.azimuth = 135
+        camera = self.viewer.cam
+
+        camera.lookat[0] = 0
+        camera.lookat[1] = .65
+        camera.lookat[2] = 0.2
+        camera.distance = 1.6
+        camera.elevation = -15
+        camera.azimuth = 135
 
     def step(self, action):
         self.set_xyz_action(action[:3])
@@ -192,7 +188,7 @@ class SawyerDoorMultitaskEnv(MultitaskEnv, SawyerXYZEnv, SawyerCamEnv):
         if self.sample_task_on_reset:
             self.controls.sample_task()
         self._reset_hand()
-        self._reset_doors()
+        # self._reset_doors()
         return self._get_obs()
 
     def _reset_doors(self):
@@ -201,13 +197,6 @@ class SawyerDoorMultitaskEnv(MultitaskEnv, SawyerXYZEnv, SawyerCamEnv):
         qpos[9:9 + self.controls.k + 1] = 0
         qvel[9:9 + self.controls.k + 1] = 0
         self.set_state(qpos, qvel)
-        self.do_simulation([0, 0], 10)
-
-    def _reset_hand(self, pos=None):
-        if pos is None:
-            pos = np.random.uniform(self.hand_low, self.hand_high) if self.hand_init_pos is None else self.hand_init_pos
-        self.data.set_mocap_pos('mocap', pos)
-        self.data.set_mocap_quat('mocap', self.effector_quat)
         self.do_simulation([0, 0], 10)
 
     def put_obj_in_hand(self, std: float = 0):
@@ -314,6 +303,13 @@ class SawyerDoorMultitaskEnv(MultitaskEnv, SawyerXYZEnv, SawyerCamEnv):
         self._state_goal = goal
         self._set_goal_marker()
 
+    def render(self, mode, **kwargs):
+        if mode == "glamor":
+            # self.sim.model.light_active[:2] = False
+            # self.sim.model.light_active[2:] = True
+            mode = "rgb"
+        return SawyerXYZEnv.render(self, mode, **kwargs)
+
 
 def door_env(**kwargs):
     from .flat_goal_env import FlatGoalEnv
@@ -332,158 +328,151 @@ def door_with_task_id(**kwargs):
 from gym.envs import register
 
 register(
-    id="DoorReach-v0",
+    id="Door-v0",
     entry_point=door_env,
     # Block goal can be in the air.
     kwargs=dict(frame_skip=5,
                 k_tasks=1,
                 reward_type="reach_distance",
-                mocap_low=(-0.5, 0.25, 0.035),
-                mocap_high=(0.5, 0.8, 0.35),
-                hand_low=(-0.35, 0.35, 0.05),
-                hand_high=(0.35, 0.7, 0.35),
+                mocap_low=(-0.1, 0.4, 0.05),
+                mocap_high=(0.1, 0.6, 0.35),
                 ),
-    max_episode_steps=100,
-    reward_threshold=-3.75,
+    # max_episode_steps=100,
+    # reward_threshold=-3.75,
 )
-register(
-    id="DoorFixedSingleTask-v0",
-    entry_point=door_env,
-    # Block goal can be in the air.
-    kwargs=dict(frame_skip=5,
-                k_tasks=1,
-                reward_type="door_dense",
-                hand_init_pos=(0, 0.525, 0.2),
-                mocap_low=(-0.5, 0.25, 0.035),
-                mocap_high=(0.5, 0.8, 0.35),
-                hand_low=(-0.35, 0.35, 0.05),
-                hand_high=(0.35, 0.7, 0.35),
-                ),
-    max_episode_steps=100,
-    reward_threshold=-3.75,
-)
-register(
-    id="DoorSingleTask-v0",
-    entry_point=door_env,
-    # Block goal can be in the air.
-    kwargs=dict(frame_skip=5,
-                k_tasks=1,
-                reward_type="door_dense",
-                mocap_low=(-0.5, 0.25, 0.035),
-                mocap_high=(0.5, 0.8, 0.35),
-                hand_low=(-0.35, 0.35, 0.05),
-                hand_high=(0.35, 0.7, 0.35),
-                ),
-    max_episode_steps=100,
-    reward_threshold=-3.75,
-)
-register(
-    id="DoorFixedMultitask-v0",
-    entry_point=door_env,
-    # Block goal can be in the air.
-    kwargs=dict(frame_skip=5,
-                k_tasks=3,
-                reward_type="door_dense",
-                hand_init_pos=(0, 0.525, 0.2),
-                mocap_low=(-0.5, 0.25, 0.035),
-                mocap_high=(0.5, 0.8, 0.35),
-                hand_low=(-0.35, 0.35, 0.05),
-                hand_high=(0.35, 0.7, 0.35),
-                ),
-    max_episode_steps=100,
-    reward_threshold=-3.75,
-)
-register(
-    id="DoorFixedMultitaskSparse-v0",
-    entry_point=door_env,
-    # Block goal can be in the air.
-    kwargs=dict(frame_skip=5,
-                k_tasks=3,
-                reward_type="door_sparse",
-                hand_init_pos=(0, 0.525, 0.2),
-                mocap_low=(-0.5, 0.25, 0.035),
-                mocap_high=(0.5, 0.8, 0.35),
-                hand_low=(-0.35, 0.35, 0.05),
-                hand_high=(0.35, 0.7, 0.35),
-                ),
-    max_episode_steps=100,
-    reward_threshold=-3.75,
-)
-register(
-    id="SawyerDoorMultitask-v0",
-    entry_point=door_env,
-    # Block goal can be in the air.
-    kwargs=dict(frame_skip=5,
-                k_tasks=3,
-                reward_type="door_dense",
-                mocap_low=(-0.5, 0.25, 0.035),
-                mocap_high=(0.5, 0.8, 0.35),
-                hand_low=(-0.35, 0.35, 0.05),
-                hand_high=(0.35, 0.7, 0.35),
-                ),
-    max_episode_steps=100,
-    reward_threshold=-3.75,
-)
-register(
-    id="SawyerDoorMultitaskSparse-v0",
-    entry_point=door_env,
-    # Block goal can be in the air.
-    kwargs=dict(frame_skip=5,
-                k_tasks=3,
-                reward_type="door_sparse",
-                mocap_low=(-0.5, 0.25, 0.035),
-                mocap_high=(0.5, 0.8, 0.35),
-                hand_low=(-0.35, 0.35, 0.05),
-                hand_high=(0.35, 0.7, 0.35),
-                ),
-    max_episode_steps=100,
-    reward_threshold=-3.75,
-)
-register(
-    id="SawyerDoorReachMultitask-v0",
-    entry_point=door_env,
-    # Block goal can be in the air.
-    kwargs=dict(frame_skip=5,
-                k_tasks=3,
-                reward_type="reach_distance",
-                mocap_low=(-0.5, 0.25, 0.035),
-                mocap_high=(0.5, 0.8, 0.35),
-                hand_low=(-0.35, 0.35, 0.05),
-                hand_high=(0.35, 0.7, 0.35),
-                ),
-    max_episode_steps=100,
-    reward_threshold=-3.75,
-)
-register(
-    id="SawyerDoorFixedMultitaskId-v0",
-    entry_point="rl_maml_tf.envs.sawyer.door_multitask:door_with_task_id",
-    # Block goal can be in the air.
-    kwargs=dict(frame_skip=5,
-                k_tasks=3,
-                sample_task_on_reset=True,
-                reward_type="door_dense",
-                hand_init_pos=(0, 0.525, 0.2),
-                mocap_low=(-0.5, 0.25, 0.035),
-                mocap_high=(0.5, 0.8, 0.35),
-                hand_low=(-0.35, 0.35, 0.05),
-                hand_high=(0.35, 0.7, 0.35),
-                ),
-    max_episode_steps=100,
-    reward_threshold=-3.75,
-)
-register(
-    id="SawyerDoorMultitaskId-v0",
-    entry_point=door_with_task_id,
-    # Block goal can be in the air.
-    kwargs=dict(frame_skip=5,
-                k_tasks=3,
-                sample_task_on_reset=True,
-                reward_type="door_dense",
-                mocap_low=(-0.5, 0.25, 0.035),
-                mocap_high=(0.5, 0.8, 0.35),
-                hand_low=(-0.35, 0.35, 0.05),
-                hand_high=(0.35, 0.7, 0.35),
-                ),
-    max_episode_steps=100,
-    reward_threshold=-3.75,
-)
+# register(
+#     id="DoorReach-v0",
+#     entry_point=door_env,
+#     # Block goal can be in the air.
+#     kwargs=dict(frame_skip=5,
+#                 k_tasks=1,
+#                 reward_type="reach_distance",
+#                 mocap_low=(-0.35, 0.35, 0.05),
+#                 mocap_high=(0.35, 0.7, 0.35),
+#                 ),
+#     max_episode_steps=100,
+#     reward_threshold=-3.75,
+# )
+# register(
+#     id="DoorFixedSingleTask-v0",
+#     entry_point=door_env,
+#     # Block goal can be in the air.
+#     kwargs=dict(frame_skip=5,
+#                 k_tasks=1,
+#                 reward_type="door_dense",
+#                 hand_init_pos=(0, 0.525, 0.2),
+#                 mocap_low=(-0.35, 0.35, 0.05),
+#                 mocap_high=(0.35, 0.7, 0.35),
+#                 ),
+#     max_episode_steps=100,
+#     reward_threshold=-3.75,
+# )
+# register(
+#     id="DoorSingleTask-v0",
+#     entry_point=door_env,
+#     # Block goal can be in the air.
+#     kwargs=dict(frame_skip=5,
+#                 k_tasks=1,
+#                 reward_type="door_dense",
+#                 mocap_low=(-0.35, 0.35, 0.05),
+#                 mocap_high=(0.35, 0.7, 0.35),
+#                 ),
+#     max_episode_steps=100,
+#     reward_threshold=-3.75,
+# )
+# register(
+#     id="DoorFixedMultitask-v0",
+#     entry_point=door_env,
+#     # Block goal can be in the air.
+#     kwargs=dict(frame_skip=5,
+#                 k_tasks=3,
+#                 reward_type="door_dense",
+#                 hand_init_pos=(0, 0.525, 0.2),
+#                 mocap_low=(-0.35, 0.35, 0.05),
+#                 mocap_high=(0.35, 0.7, 0.35),
+#                 ),
+#     max_episode_steps=100,
+#     reward_threshold=-3.75,
+# )
+# register(
+#     id="DoorFixedMultitaskSparse-v0",
+#     entry_point=door_env,
+#     # Block goal can be in the air.
+#     kwargs=dict(frame_skip=5,
+#                 k_tasks=3,
+#                 reward_type="door_sparse",
+#                 hand_init_pos=(0, 0.525, 0.2),
+#                 mocap_low=(-0.35, 0.35, 0.05),
+#                 mocap_high=(0.35, 0.7, 0.35),
+#                 ),
+#     max_episode_steps=100,
+#     reward_threshold=-3.75,
+# )
+# register(
+#     id="SawyerDoorMultitask-v0",
+#     entry_point=door_env,
+#     # Block goal can be in the air.
+#     kwargs=dict(frame_skip=5,
+#                 k_tasks=3,
+#                 reward_type="door_dense",
+#                 mocap_low=(-0.35, 0.35, 0.05),
+#                 mocap_high=(0.35, 0.7, 0.35),
+#                 ),
+#     max_episode_steps=100,
+#     reward_threshold=-3.75,
+# )
+# register(
+#     id="SawyerDoorMultitaskSparse-v0",
+#     entry_point=door_env,
+#     # Block goal can be in the air.
+#     kwargs=dict(frame_skip=5,
+#                 k_tasks=3,
+#                 reward_type="door_sparse",
+#                 mocap_low=(-0.35, 0.35, 0.05),
+#                 mocap_high=(0.35, 0.7, 0.35),
+#                 ),
+#     max_episode_steps=100,
+#     reward_threshold=-3.75,
+# )
+# register(
+#     id="SawyerDoorReachMultitask-v0",
+#     entry_point=door_env,
+#     # Block goal can be in the air.
+#     kwargs=dict(frame_skip=5,
+#                 k_tasks=3,
+#                 reward_type="reach_distance",
+#                 mocap_low=(-0.35, 0.35, 0.05),
+#                 mocap_high=(0.35, 0.7, 0.35),
+#                 ),
+#     max_episode_steps=100,
+#     reward_threshold=-3.75,
+# )
+# register(
+#     id="SawyerDoorFixedMultitaskId-v0",
+#     entry_point="rl_maml_tf.envs.sawyer.door_multitask:door_with_task_id",
+#     # Block goal can be in the air.
+#     kwargs=dict(frame_skip=5,
+#                 k_tasks=3,
+#                 sample_task_on_reset=True,
+#                 reward_type="door_dense",
+#                 hand_init_pos=(0, 0.525, 0.2),
+#                 mocap_low=(-0.35, 0.35, 0.05),
+#                 mocap_high=(0.35, 0.7, 0.35),
+#                 ),
+#     max_episode_steps=100,
+#     reward_threshold=-3.75,
+# )
+# register(
+#     id="SawyerDoorMultitaskId-v0",
+#     entry_point=door_with_task_id,
+#     # Block goal can be in the air.
+#     kwargs=dict(frame_skip=5,
+#                 k_tasks=3,
+#                 sample_task_on_reset=True,
+#                 reward_type="door_dense",
+#                 mocap_low=(-0.35, 0.35, 0.05),
+#                 mocap_high=(0.35, 0.7, 0.35),
+#                 ),
+#     max_episode_steps=100,
+#     reward_threshold=-3.75,
+# )
