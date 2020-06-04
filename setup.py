@@ -14,4 +14,5 @@ setup(name='gym-sawyer',
       author='Ge Yang<ge.ike.yang@gmail.com>',
       url='https://github.com/geyang/gym-sawyer',
       author_email='ge.ike.yang@gmail.com',
+      package_data={'gym_sawyer': ['sawyer/**/*.*']},
       version=version)
