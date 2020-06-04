@@ -188,9 +188,10 @@ class MujocoEnv(gym.Env):
     def close(self):
         self.viewer = None
 
-        for viewer in self._viewers.items():
+        for name, viewer in self._viewers.items():
             import glfw
-            glfw.destroy_window(viewer.window)
+            # glfw.destroy_window(viewer.opengl_context.window)
+            glfw.destroy_window(viewer.opengl_context.window)
 
         self._viewers.clear()
 
