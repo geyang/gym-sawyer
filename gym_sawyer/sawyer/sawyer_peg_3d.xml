@@ -5,19 +5,11 @@
         <include file="sawyer_xyz_base.xml"/>
         <include file="bottom_right_lighting.xml"/>
         <include file="front_left_lighting.xml"/>
-        <body name="obj_0" pos="0 0.6 0.02">
-            <joint name="obj_0" type="free" limited='false' damping="0" armature="0"/>
-            <inertial pos="0 0 0" mass="0.01" diaginertia="100000 100000 100000"/>
-            <geom name="obj_0" type="box" pos="0 0 0" size="0.02 0.02 0.02" rgba="0.2 0.5 0.9 1" contype="1"
-                  conaffinity="1" friction="2 0.1 0.002" condim="4"/>
-            <site name="obj_0" pos="0 0 0" size="0.01"/>
-        </body>
-        <body name="obj_1" pos="-0.1 0.6 0.02">
+        <body name="slot" pos="-0.1 0.6 0.02">
             <joint name="obj_1" type="free" limited='false' damping="0" armature="0"/>
             <inertial pos="0 0 0" mass="0.01" diaginertia="100000 100000 100000"/>
             <geom name="obj_1" type="box" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0.5 0.5 1" contype="1"
                   conaffinity="1" friction="2 0.1 0.002" condim="4"/>
-            <site name="obj_1" pos="0 0 0" size="0.01"/>
         </body>
     </worldbody>
     <sensor>

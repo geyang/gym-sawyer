@@ -14,7 +14,7 @@ ALL_TASKS = [
 ]
 
 
-class SawyerPickAndPlaceEnv(MultitaskEnv, SawyerXYZEnv, SawyerCamEnv):
+class SawyerPeg3DEnv(MultitaskEnv, SawyerXYZEnv, SawyerCamEnv):
 
     def __init__(
             self,
@@ -528,7 +528,7 @@ from gym.envs import register
 # )
 register(
     id="PickPlace-v0",
-    entry_point=SawyerPickAndPlaceEnv,
+    entry_point=SawyerPeg3DEnv,
     # Place goal has to be on the surface.
     kwargs=dict(frame_skip=5,
                 # reward_type="pick_place_dense",
@@ -538,5 +538,5 @@ register(
                 obj_high=(0.0, 0.5, 0.02)
                 ),
     # max_episode_steps=100,
-    # reward_threshold=-3.75,
+    reward_threshold=-3.75,
 )

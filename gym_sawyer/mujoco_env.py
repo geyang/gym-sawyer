@@ -23,7 +23,12 @@ class MujocoEnv(gym.Env):
      - Do not automatically set the observation/action space.
     """
 
-    def __init__(self, model_path, frame_skip=4, set_spaces=False):
+    def __init__(self, model_path, frame_skip=4, set_spaces=False,
+                 width=100, height=100, mode='rgb'):
+        # rendering attributes
+        self.width = width
+        self.height = height
+        self.mode = mode
         if model_path.startswith("/"):
             fullpath = model_path
         else:
@@ -128,7 +133,7 @@ class MujocoEnv(gym.Env):
         """
         pass
 
-    def render(self, mode='human', width=None, height=None, cam_id=None):
+    def render(self, mode=None, width=None, height=None, cam_id=None):
         """
         returns images of modality <modeL
 
@@ -136,8 +141,9 @@ class MujocoEnv(gym.Env):
         :param kwargs: width, height (in pixels) of the image.
         :return: image(, depth). image is between [0, 1), depth is distance.
         """
-        width = width or self.default_window_width
-        height = height or self.default_window_height
+        mode = mode or self.mode
+        width = width or self.width
+        height = height or self.height
         viewer = self._get_viewer(mode)
 
         if cam_id is not None:
@@ -188,8 +194,8 @@ class MujocoEnv(gym.Env):
 
         self._viewers.clear()
 
-    default_window_width = DEFAULT_SIZE[0]
-    default_window_height = DEFAULT_SIZE[1]
+    width = DEFAULT_SIZE[0]
+    height = DEFAULT_SIZE[1]
 
     def _get_viewer(self, mode) -> mujoco_py.MjViewer:
         self.viewer = self._viewers.get(mode)
@@ -201,7 +207,7 @@ class MujocoEnv(gym.Env):
             # we turn off the overlay and make the window smaller.
             self.viewer._hide_overlay = True
             import glfw
-            glfw.set_window_size(self.viewer.window, self.default_window_width, self.default_window_height)
+            glfw.set_window_size(self.viewer.window, self.width, self.height)
         else:
             self.viewer = mujoco_py.MjRenderContextOffscreen(self.sim, -1)
         self.viewer_setup()
