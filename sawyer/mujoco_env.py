@@ -1,4 +1,5 @@
 import os
+import sys
 import numpy as np
 from os import path
 import gym
@@ -87,7 +88,6 @@ class MujocoEnv(gym.Env):
     # -----------------------------
 
     def reset(self):
-        print('reset')
         self.sim.reset()
         ob = self.reset_model()
         old_viewer = self.viewer
@@ -136,7 +136,9 @@ class MujocoEnv(gym.Env):
 
         self.viewer = self._viewers.get(mode_cam_id, None)
         if self.viewer is not None:
-            print('using old', mode, cam_id, self.viewer)
+            if sys.platform == 'darwin':
+                # info: to fix the black image of death.
+                self.viewer._set_mujoco_buffers()
             return self.viewer
 
         if mode == 'human':
@@ -146,18 +148,18 @@ class MujocoEnv(gym.Env):
             import glfw
             glfw.set_window_size(self.viewer.window, self.width, self.height)
         else:
-            self.viewer = mujoco_py.MjRenderContextOffscreen(self.sim, -1)
+            # self.viewer = mujoco_py.MjRenderContextOffscreen(self.sim, -1)
+            self.viewer = mujoco_py.MjRenderContext(self.sim, offscreen=True,
+                                                    device_id=0, opengl_backend="glfw")
 
         self._viewers[mode_cam_id] = self.viewer
 
         camera = self.viewer.cam
 
         if cam_id == -1:
-            print(">> cam_id", [cam_id])
             camera.fixedcamid = cam_id
             camera.type = mujoco_py.generated.const.CAMERA_FREE
         elif cam_id is not None:
-            print(">> cam_id", [cam_id])
             camera.fixedcamid = cam_id
             camera.type = mujoco_py.generated.const.CAMERA_FIXED
 
@@ -172,7 +174,6 @@ class MujocoEnv(gym.Env):
         :param kwargs: width, height (in pixels) of the image.
         :return: image(, depth). image is between [0, 1), depth is distance.
         """
-        print('rendering')
         mode = mode or self.mode
         width = width or self.width
         height = height or self.height
@@ -212,7 +213,6 @@ class MujocoEnv(gym.Env):
             # original image is upside-down, so flip it
             display(Image.fromarray(data[::-1, :, :]))
             return data[::-1, :, :]
-
 
     def close(self):
         self.viewer = None
