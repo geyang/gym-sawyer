@@ -36,7 +36,7 @@ if __name__ == '__main__':
     import gym
     from PIL import Image
 
-    raw = gym.make("gym_sawyer:PickPlace-v0", cam_id=0, show_mocap=False)
+    raw = gym.make("sawyer:PickPlace-v0", cam_id=0, show_mocap=False)
     env = GoalImage(raw)
 
     obs = env.reset()

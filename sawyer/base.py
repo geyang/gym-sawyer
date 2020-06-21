@@ -97,13 +97,13 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
         self.data.set_mocap_pos('mocap', new_mocap_pos)
         self.data.set_mocap_quat('mocap', self.effector_quat)
 
-    def _reset_hand(self, pos=None):
+    def _reset_hand(self, pos=None, gripper=None):
         if pos is None:
             pos = self.hand_init_pos
-        for _ in range(10):
-            self.data.set_mocap_pos('mocap', pos)
-            self.data.set_mocap_quat('mocap', self.effector_quat)
-            self.do_simulation(None, self.frame_skip)
+
+        self.data.set_mocap_pos('mocap', pos)
+        self.data.set_mocap_quat('mocap', self.effector_quat)
+        self.do_simulation(gripper, 20)
 
 
 class SawyerCamEnv(metaclass=abc.ABCMeta):
@@ -113,11 +113,4 @@ class SawyerCamEnv(metaclass=abc.ABCMeta):
         self.height = height
 
     def viewer_setup(self, cam_id=None):
-        cam_id = self.cam_id if cam_id is None else cam_id
-        camera = self.viewer.cam
-        if cam_id == -1:
-            camera.fixedcamid = cam_id
-            camera.type = mujoco_py.generated.const.CAMERA_FREE
-        elif cam_id is not None:
-            camera.fixedcamid = cam_id
-            camera.type = mujoco_py.generated.const.CAMERA_FIXED
+        pass

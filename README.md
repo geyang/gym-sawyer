@@ -4,7 +4,13 @@ Current release at `v0.1.0`.
 
 ## Installation
 
-Until then: 
+The `gym-sawyer` package name is currently being squatted [(issue PEP541)](https://github.com/pypa/pypi-support/issues/423) so I went for the shorter `sawyer` module name instead.
+
+To install:
+```bash
+pip install sawyer
+```
+or
 ```bash
 pip install git+https://github.com/geyang/gym-sawyer
 ```
@@ -14,7 +20,7 @@ pip install git+https://github.com/geyang/gym-sawyer
 ```python
 import gym
 
-env = gym.make("gym_sawyer:PickPlace-v0", width=84, height=84, cam_id=-1)
+env = gym.make("sawyer:PickPlace-v0", width=84, height=84, cam_id=-1)
 
 env.render("notebook")
 ```

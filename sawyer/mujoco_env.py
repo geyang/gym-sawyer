@@ -23,11 +23,8 @@ class MujocoEnv(gym.Env):
      - Do not automatically set the observation/action space.
     """
 
-    def __init__(self, model_path, frame_skip=4, set_spaces=False,
-                 width=100, height=100, mode='rgb'):
+    def __init__(self, model_path, frame_skip=4, set_spaces=False, mode='rgb', **_):
         # rendering attributes
-        self.width = width
-        self.height = height
         self.mode = mode
         if model_path.startswith("/"):
             fullpath = model_path
@@ -90,6 +87,7 @@ class MujocoEnv(gym.Env):
     # -----------------------------
 
     def reset(self):
+        print('reset')
         self.sim.reset()
         ob = self.reset_model()
         old_viewer = self.viewer
@@ -133,6 +131,39 @@ class MujocoEnv(gym.Env):
         """
         pass
 
+    def _get_viewer(self, mode, cam_id) -> mujoco_py.MjViewer:
+        mode_cam_id = mode, cam_id
+
+        self.viewer = self._viewers.get(mode_cam_id, None)
+        if self.viewer is not None:
+            print('using old', mode, cam_id, self.viewer)
+            return self.viewer
+
+        if mode == 'human':
+            self.viewer = mujoco_py.MjViewer(self.sim)
+            # we turn off the overlay and make the window smaller.
+            self.viewer._hide_overlay = True
+            import glfw
+            glfw.set_window_size(self.viewer.window, self.width, self.height)
+        else:
+            self.viewer = mujoco_py.MjRenderContextOffscreen(self.sim, -1)
+
+        self._viewers[mode_cam_id] = self.viewer
+
+        camera = self.viewer.cam
+
+        if cam_id == -1:
+            print(">> cam_id", [cam_id])
+            camera.fixedcamid = cam_id
+            camera.type = mujoco_py.generated.const.CAMERA_FREE
+        elif cam_id is not None:
+            print(">> cam_id", [cam_id])
+            camera.fixedcamid = cam_id
+            camera.type = mujoco_py.generated.const.CAMERA_FIXED
+
+        self.viewer_setup()
+        return self.viewer
+
     def render(self, mode=None, width=None, height=None, cam_id=None):
         """
         returns images of modality <modeL
@@ -141,32 +172,35 @@ class MujocoEnv(gym.Env):
         :param kwargs: width, height (in pixels) of the image.
         :return: image(, depth). image is between [0, 1), depth is distance.
         """
+        print('rendering')
         mode = mode or self.mode
         width = width or self.width
         height = height or self.height
-        viewer = self._get_viewer(mode)
 
-        if cam_id is not None:
-            self.viewer_setup(cam_id)
+        viewer = self._get_viewer(mode, cam_id or self.cam_id)
 
         self._before_render()
+
+        if mode == 'human':
+            if width and height:
+                import glfw
+                glfw.set_window_size(viewer.window, width, height)
+            return viewer.render()
+
+        viewer.render(width, height)
 
         # note-1: original image is upside-down, so flip it
         # note-2: depth channel is float, in meters. Not normalized.
         if mode in ['rgb', 'rgb_array']:
-            viewer.render(width, height)
             data = viewer.read_pixels(width, height, depth=False)
             return data[::-1, :, :].astype(np.uint8)
         elif mode == 'rgbd':
-            viewer.render(width, height)
             rgb, d = viewer.read_pixels(width, height, depth=True)
             return rgb[::-1, :, :], d[::-1, :]
         elif mode == 'depth':
-            viewer.render(width, height)
             _, d = viewer.read_pixels(width, height, depth=True)
             return d[::-1, :]
         elif mode == 'grey':
-            viewer.render(width, height)
             data = viewer.read_pixels(width, height, depth=False)
             # original image is upside-down, so flip it
             return data[::-1, :, :].mean(axis=-1).astype(np.uint8)
@@ -174,16 +208,11 @@ class MujocoEnv(gym.Env):
             from IPython.display import display
             from PIL import Image
 
-            viewer.render(width, height)
             data = viewer.read_pixels(width, height, depth=False)
             # original image is upside-down, so flip it
             display(Image.fromarray(data[::-1, :, :]))
+            return data[::-1, :, :]
 
-        elif mode == 'human':
-            if width and height:
-                import glfw
-                glfw.set_window_size(viewer.window, width, height)
-            viewer.render()
 
     def close(self):
         self.viewer = None
@@ -195,26 +224,6 @@ class MujocoEnv(gym.Env):
 
         self._viewers.clear()
 
-    width = DEFAULT_SIZE[0]
-    height = DEFAULT_SIZE[1]
-
-    def _get_viewer(self, mode) -> mujoco_py.MjViewer:
-        self.viewer = self._viewers.get(mode)
-        if self.viewer is not None:
-            return self.viewer
-
-        if mode == 'human':
-            self.viewer = mujoco_py.MjViewer(self.sim)
-            # we turn off the overlay and make the window smaller.
-            self.viewer._hide_overlay = True
-            import glfw
-            glfw.set_window_size(self.viewer.window, self.width, self.height)
-        else:
-            self.viewer = mujoco_py.MjRenderContextOffscreen(self.sim, -1)
-        self.viewer_setup()
-        self._viewers[mode] = self.viewer
-        return self.viewer
-
     def get_body_com(self, body_name):
         return self.data.get_body_xpos(body_name)
 
@@ -224,12 +233,12 @@ class MujocoEnv(gym.Env):
             self.sim.data.qvel.flat
         ])
 
-    def get_image(self, width=84, height=84, camera_name=None):
-        return self.sim.render(
-            width=width,
-            height=height,
-            camera_name=camera_name,
-        )
+    # def get_image(self, width=84, height=84, camera_name=None):
+    #     return self.sim.render(
+    #         width=width,
+    #         height=height,
+    #         camera_name=camera_name,
+    #     )
 
     # def initialize_camera(self, init_fctn):
     #     sim = self.sim

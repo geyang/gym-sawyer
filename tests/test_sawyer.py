@@ -1,7 +1,7 @@
 def test_pick_place():
     import gym
 
-    env = gym.make("gym_sawyer:PickPlace-v0", shaped_init=0.5, cam_id=0)
+    env = gym.make("sawyer:PickPlace-v0", shaped_init=0.5, cam_id=0)
     env.reset()
     for _ in range(100):
         img = env.render("grey")
@@ -12,9 +12,9 @@ if __name__ == '__main__':
     import numpy as np
     import gym
 
-    # env = gym.make("gym_sawyer:DoorReach-v0")
-    env = gym.make("gym_sawyer:PickPlace-v0", shaped_init=0.5, cam_id=0)
-    # env = gym.make("gym_sawyer:MixedMultitask-v0")
+    # env = gym.make("sawyer:DoorReach-v0")
+    env = gym.make("sawyer:PickPlace-v0", shaped_init=0.5, cam_id=0)
+    # env = gym.make("sawyer:MixedMultitask-v0")
     for _ in range(10000):
         env.reset()
         for i in range(100):

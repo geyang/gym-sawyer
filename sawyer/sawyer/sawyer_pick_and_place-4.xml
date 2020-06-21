@@ -36,7 +36,7 @@
         <touch name='leftclaw_sensor' site='leftEndEffector'/>
     </sensor>
     <actuator>
-        <motor ctrllimited="true" ctrlrange="-1 1" gear="200" joint="r_close"/>
-        <motor ctrllimited="true" ctrlrange="-1 1" gear="200" joint="l_close"/>
+        <motor ctrllimited="true" ctrlrange="-1 10" gear="6000" joint="r_close"/>
+        <motor ctrllimited="true" ctrlrange="-1 10" gear="6000" joint="l_close"/>
     </actuator>
 </mujoco>

@@ -3,6 +3,15 @@
 
 Current release at ``v0.1.0``.
 
+Installation
+------------
+
+Until then:
+
+.. code-block:: bash
+
+   pip install git+https://github.com/geyang/gym-sawyer
+
 Usage Example
 -------------
 
@@ -27,4 +36,4 @@ Usage Example
 
    figures/PickPlace-v0.png?raw=true
 
-Ge Yang © 2020
+Ge Yang, Bradly Stadie © 2020

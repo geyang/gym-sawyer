@@ -14,7 +14,7 @@ ALL_TASKS = [
 ]
 
 
-class SawyerPeg3DEnv(MultitaskEnv, SawyerXYZEnv, SawyerCamEnv):
+class SawyerPickAndPlaceEnv(MultitaskEnv, SawyerXYZEnv, SawyerCamEnv):
 
     def __init__(
             self,
@@ -33,23 +33,18 @@ class SawyerPeg3DEnv(MultitaskEnv, SawyerXYZEnv, SawyerCamEnv):
             fixed_goal=None,
             hide_goal_markers=False,
             obj_in_hand=False,
-
-            free=False,
             cam_id=-1,
-            width=None,
-            height=None,
             # action_scale: passed into position control.
             **kwargs
     ):
-        self.free = free
         self.task = task
         self.num_objs = num_objs
 
-        model_name = get_asset_full_path(f'sawyer_peg_3d.xml')
+        model_name = get_asset_full_path(f'sawyer_pick_and_place-{num_objs}.xml')
 
         MultitaskEnv.__init__(self)
         SawyerXYZEnv.__init__(self, model_name=model_name, **kwargs)
-        SawyerCamEnv.__init__(self, cam_id=cam_id, width=width, height=height)
+        SawyerCamEnv.__init__(self, cam_id=cam_id, **kwargs)
 
         self.shaped_init = shaped_init
 
@@ -116,7 +111,15 @@ class SawyerPeg3DEnv(MultitaskEnv, SawyerXYZEnv, SawyerCamEnv):
 
     def step(self, action):
         self.set_xyz_action(action[:3])
-        self.do_simulation((action[3], -action[3]))
+
+        clipper = action[3]
+
+        if clipper > 0:
+            self.clipper = 1
+        elif clipper < 0:
+            self.clipper = -1
+
+        self.do_simulation((self.clipper, -self.clipper))
         # The marker seems to get reset every time you do a simulation
         # self._set_goal_marker()
         ob = self._get_obs()
@@ -128,7 +131,7 @@ class SawyerPeg3DEnv(MultitaskEnv, SawyerXYZEnv, SawyerCamEnv):
     def _get_obs(self):
         e = self.get_endeff_pos()
         dot = self.get_endeff_vel()
-        b = self.get_slot_pos()
+        b = self.get_obj_pos()
         l, r = self.get_gripper_pos()
         flat_obs = np.concatenate((e, b, dot))
 
@@ -159,8 +162,8 @@ class SawyerPeg3DEnv(MultitaskEnv, SawyerXYZEnv, SawyerCamEnv):
         # else:
         return {}
 
-    def get_slot_pos(self):
-        return self.data.get_body_xpos('slot').copy()
+    def get_obj_pos(self):
+        return self.data.get_body_xpos('obj_0').copy()
 
     def _set_goal_marker(self):
         """
@@ -193,40 +196,48 @@ class SawyerPeg3DEnv(MultitaskEnv, SawyerXYZEnv, SawyerCamEnv):
 
     def reset_model(self, mode=None):
         """Provide high-level `mode` for sampling types of goal configurations."""
-        # note: can remove.
         goal = self.sample_goal()
         self._state_goal = goal['state_desired_goal']
         # self._set_goal_marker()
 
         obj_pos = self.obj_space.sample()
-        if self.free:
-            away_obj_pos = self.obj_space.low - [1, 1, 1]
-            self._set_obj_xyz(away_obj_pos)
-        else:
-            self._set_obj_xyz(obj_pos)
+        obj_pos_2 = obj_pos + [0.05, 0.05, 0]
+        self._set_obj_xyz(obj_pos)
+        self._set_obj_xyz(obj_pos_2, obj_id=1)
 
         rd = np.random.rand()
         if mode is None:
-            if rd < 0.90:
+            if rd < 0.45:
                 mode = 'hover'
+            elif rd < 0.9:
+                mode = "in-hand-hover"
             else:
-                mode = "inserted"
+                mode = "on-top"
 
         if mode == 'hover':  # hover
             hand_pos = self.hand_space.sample()
             self._reset_hand(hand_pos)
-        elif mode == "inserted":
-            hand_pos = obj_pos + [0, 0, 0.03]
+            self.clipper = -1
+        elif mode == "in-hand-hover":
+            hand_pos = self.hand_space.sample()
             self._reset_hand(hand_pos)
+            self.put_obj_in_hand()
+            self.clipper = 1
+        elif mode == 'on-top':
+            self._reset_hand(obj_pos_2 + [0, 0, 0.08])
+            self.put_obj_in_hand()
+            self.clipper = 1
+        else:
+            raise NotImplementedError(f"{mode} is not supported")
 
         return self._get_obs()
 
     def put_obj_in_hand(self, obj_id=0):
         new_obj_pos = self.data.get_site_xpos('endEffector')
         new_obj_pos[1] -= 0.01
-        for i in range(5):
-            self.do_simulation([1, -1])
+        self.do_simulation([-1, 1])
         self._set_obj_xyz(new_obj_pos, obj_id)
+        self.do_simulation([1, -1])
 
     def set_to_goal(self, goal, obj_id=0):
         state_goal = goal['state_desired_goal']
@@ -423,7 +434,7 @@ class SawyerPeg3DEnv(MultitaskEnv, SawyerXYZEnv, SawyerCamEnv):
 
 def pick_place_env(**kwargs):
     from .flat_goal_env import FlatGoalEnv
-    return FlatGoalEnv(SawyerPeg3DEnv(**kwargs),
+    return FlatGoalEnv(SawyerPickAndPlaceEnv(**kwargs),
                        obs_keys=('state_observation', 'state_desired_goal',
                                  'state_delta', 'state_touch_distance', 'state_gripper'),
                        goal_keys=('state_desired_goal',))
@@ -527,16 +538,16 @@ from gym.envs import register
 #     reward_threshold=-3.75,
 # )
 register(
-    id="Peg3D-v0",
-    entry_point=SawyerPeg3DEnv,
+    id="PickPlace-v0",
+    entry_point=SawyerPickAndPlaceEnv,
     # Place goal has to be on the surface.
     kwargs=dict(frame_skip=5,
                 # reward_type="pick_place_dense",
                 mocap_low=(-0.1, 0.4, 0.1),
-                mocap_high=(0.1, 0.6, 0.2),
+                mocap_high=(0.1, 0.6, 0.22),
                 obj_low=(0.0, 0.5, 0.02),
                 obj_high=(0.0, 0.5, 0.02)
                 ),
     # max_episode_steps=100,
-    reward_threshold=-3.75,
+    # reward_threshold=-3.75,
 )
