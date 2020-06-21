@@ -148,9 +148,9 @@ class MujocoEnv(gym.Env):
             import glfw
             glfw.set_window_size(self.viewer.window, self.width, self.height)
         else:
-            # self.viewer = mujoco_py.MjRenderContextOffscreen(self.sim, -1)
-            self.viewer = mujoco_py.MjRenderContext(self.sim, offscreen=True,
-                                                    device_id=0, opengl_backend="glfw")
+            self.viewer = mujoco_py.MjRenderContextOffscreen(self.sim, -1)
+            # self.viewer = mujoco_py.MjRenderContext(self.sim, offscreen=True,
+            #                                         device_id=0, opengl_backend="glfw")
 
         self._viewers[mode_cam_id] = self.viewer
 
