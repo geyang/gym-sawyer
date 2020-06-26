@@ -200,7 +200,7 @@ class SawyerPeg3DEnv(MultitaskEnv, SawyerXYZEnv, SawyerCamEnv):
 
         if mode == 'hover':  # hover
 
-            self.clipper = float(self.np_random.rand() < 0.5)  # uniformly sample.
+            self.clipper = self.np_random.choice([-1, 1], size=1)
 
             hand_pos = self.hand_space.sample()
             hand_pos += [0, 0, 0.03]

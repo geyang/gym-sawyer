@@ -10,9 +10,6 @@ class SawyerMocapBase(MujocoEnv, metaclass=abc.ABCMeta):
     Provides some commonly-shared functions for Sawyer Mujoco envs that use
     mocap for XYZ control.
     """
-    mocap_low = np.array([-0.2, 0.5, 0.05])
-    mocap_high = np.array([0.2, 0.7, 0.6])
-
     def __init__(self, model_name, frame_skip=None, **kwargs):
         MujocoEnv.__init__(self, model_name, frame_skip=5 if frame_skip is None else frame_skip, **kwargs)
         # Resets the mocap welds that we use for actuation.

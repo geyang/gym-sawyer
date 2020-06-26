@@ -216,9 +216,11 @@ class SawyerPickAndPlaceEnv(MultitaskEnv, SawyerXYZEnv, SawyerCamEnv):
         if mode == 'hover':  # hover
             hand_pos = self.hand_space.sample()
             self._reset_hand(hand_pos)
-            self.clipper = -1
+            self.clipper = self.np_random.choice([-1, 1], size=1)
         elif mode == "in-hand-hover":
             hand_pos = self.hand_space.sample()
+            # info: make sure in-hand-hover is in the air.
+            hand_pos[-1] = np.max([0.08, hand_pos[-1]])
             self._reset_hand(hand_pos)
             self.put_obj_in_hand()
             self.clipper = 1
