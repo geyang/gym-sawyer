@@ -112,5 +112,6 @@ class SawyerCamEnv(metaclass=abc.ABCMeta):
         self.width = width
         self.height = height
 
+    @abc.abstractmethod
     def viewer_setup(self, cam_id=None):
         pass

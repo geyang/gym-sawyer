@@ -97,7 +97,6 @@ class SawyerPickAndPlaceEnv(MultitaskEnv, SawyerXYZEnv, SawyerCamEnv):
         ])
 
     def viewer_setup(self, cam_id=None):
-        SawyerCamEnv.viewer_setup(self, cam_id)
 
         camera = self.viewer.cam
 

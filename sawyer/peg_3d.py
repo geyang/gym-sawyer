@@ -104,7 +104,6 @@ class SawyerPeg3DEnv(MultitaskEnv, SawyerXYZEnv, SawyerCamEnv):
         ])
 
     def viewer_setup(self, cam_id=None):
-        SawyerCamEnv.viewer_setup(self, cam_id)
 
         camera = self.viewer.cam
 
@@ -199,14 +198,17 @@ class SawyerPeg3DEnv(MultitaskEnv, SawyerXYZEnv, SawyerCamEnv):
             else:
                 mode = "inserted"
 
-        self.clipper = 1  # always close the pincher
-
         if mode == 'hover':  # hover
+
+            self.clipper = float(self.np_random.rand() < 0.5)  # uniformly sample.
+
             hand_pos = self.hand_space.sample()
             hand_pos += [0, 0, 0.03]
             self._reset_hand(hand_pos, [1, -1])
 
         elif mode == "inserted":
+
+            self.clipper = 1  # always close the pincher
 
             hand_pos = obj_pos + [0, 0, 0.1]
             self._reset_hand(hand_pos, [1, -1])

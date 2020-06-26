@@ -163,7 +163,7 @@ class MujocoEnv(gym.Env):
             camera.fixedcamid = cam_id
             camera.type = mujoco_py.generated.const.CAMERA_FIXED
 
-        self.viewer_setup()
+        self.viewer_setup(self.cam_id)
         return self.viewer
 
     def render(self, mode=None, width=None, height=None, cam_id=None):
