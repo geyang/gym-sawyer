@@ -533,8 +533,8 @@ gym.envs.register(
     # Place goal has to be on the surface.
     kwargs=dict(frame_skip=5,
                 # reward_type="pick_place_dense",
-                mocap_low=(-0.1, 0.4, 0.1),
-                mocap_high=(0.1, 0.6, 0.2),
+                mocap_low=(-0.1, 0.4, 0.05),
+                mocap_high=(0.1, 0.6, 0.22),
                 obj_low=(0.0, 0.5, 0.02),
                 obj_high=(0.0, 0.5, 0.02)
                 ),
