@@ -124,7 +124,7 @@ class SawyerDoorMultitaskEnv(MultitaskEnv, SawyerXYZEnv, SawyerCamEnv):
         e = self.get_endeff_pos()
         doors = self.get_door_poses()
         dot = self.get_endeff_vel()
-        l, r = self.get_gripper_pos()
+        l, r = self.get_gripper_poses()
 
         return dict(
             hand_pos=e,

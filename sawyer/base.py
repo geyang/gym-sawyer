@@ -10,6 +10,7 @@ class SawyerMocapBase(MujocoEnv, metaclass=abc.ABCMeta):
     Provides some commonly-shared functions for Sawyer Mujoco envs that use
     mocap for XYZ control.
     """
+
     def __init__(self, model_name, frame_skip=None, **kwargs):
         MujocoEnv.__init__(self, model_name, frame_skip=5 if frame_skip is None else frame_skip, **kwargs)
         # Resets the mocap welds that we use for actuation.
@@ -37,7 +38,17 @@ class SawyerMocapBase(MujocoEnv, metaclass=abc.ABCMeta):
         grip_velp = self.data.get_body_xvelp('hand').copy()
         return grip_velp
 
+    def get_gripper_state(self):
+        """returns 1 if gripper is closed, -1 otherwise"""
+        l, r = self.get_gripper_poses()
+        return np.array([[-1, 1][np.linalg.norm(l - r) < 0.07]])
+
     def get_gripper_pos(self):
+        """returns COM of gripper"""
+        l, r = self.get_gripper_poses()
+        return (l + r) / 2
+
+    def get_gripper_poses(self):
         left = self.data.get_site_xpos('leftEndEffector').copy()
         right = self.data.get_site_xpos('rightEndEffector').copy()
         return left, right
@@ -100,7 +111,7 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
 
         self.data.set_mocap_pos('mocap', pos)
         self.data.set_mocap_quat('mocap', self.effector_quat)
-        self.do_simulation(gripper, 20)
+        self.do_simulation(gripper, 30)
 
 
 class SawyerCamEnv(metaclass=abc.ABCMeta):
@@ -112,3 +123,51 @@ class SawyerCamEnv(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def viewer_setup(self, cam_id=None):
         pass
+
+
+class GoalReaching(metaclass=abc.ABCMeta):
+
+    def set_goal(self, x):
+        self.goal = x
+
+    def compute_reward(self, x, goal):
+        d = np.linalg.norm(x - goal)
+        return float(d < 0.02) - 1
+
+    def reset(self):
+        obs = self.reset_model()
+        self.set_goal(obs['x'])
+
+        return self.reset_model()
+
+    def set_goal(self, x):
+        self.goal = x
+
+    FLAT_KEYS = "hand", "gripper"
+
+    def _set_bodies(self):
+        pass
+
+    def get_obs(self):
+        self._set_bodies()
+        obs = self.state_dict()
+        obs['x'] = np.concatenate([obs[k] for k in self.FLAT_KEYS])
+        return obs
+
+    def step(self, action):
+
+        self.set_xyz_action(action[:3])
+
+        clipper = action[3]
+
+        if clipper > 0:
+            self.clipper = 1
+        elif clipper < 0:
+            self.clipper = -1
+
+        for i in range(self.frame_skip):
+            self.do_simulation((self.clipper, -self.clipper), n_frames=1)
+            ob = self.get_obs()
+            reward = self.compute_reward(ob['x'], self.goal)
+
+        return ob, reward, bool(reward == 0), {}

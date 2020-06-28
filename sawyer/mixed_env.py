@@ -147,7 +147,7 @@ class SawyerMixedMultitaskEnv(MultitaskEnv, SawyerXYZEnv):
         doors = self.get_door_poses()
         dot = self.get_endeff_vel()
         d = self.get_obj_distractor_pos()  # note: we keep the ordering the same, just use different rewards
-        l, r = self.get_gripper_pos()
+        l, r = self.get_gripper_poses()
         obj_goal = self._state_goal
 
         return dict(

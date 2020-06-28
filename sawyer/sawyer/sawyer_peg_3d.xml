@@ -8,13 +8,13 @@
         <body name="slot" pos="-0.1 0.6 0.02">
             <joint name="obj_1" type="free" limited='false' damping="0" armature="0"/>
             <inertial pos="0 0 0" mass="0.01" diaginertia="100000 100000 100000"/>
-            <geom name="slot_side_0" type="box" pos="-0.07 0 0" size="0.05 0.12 0.03" rgba="1 0.5 0.5 1" contype="1"
+            <geom name="slot_side_0" type="box" pos="-0.07 0 0" size="0.05 0.12 0.03" rgba="0.35 0.35 0.35 1" contype="1"
                   conaffinity="1" friction="2 0.1 0.002" condim="4"/>
-            <geom name="slot_side_1" type="box" pos="0.07 0 0" size="0.05 0.12 0.03" rgba="1 0.5 0.5 1" contype="1"
+            <geom name="slot_side_1" type="box" pos="0.07 0 0" size="0.05 0.12 0.03" rgba="0.35 0.35 0.35 1" contype="1"
                   conaffinity="1" friction="2 0.1 0.002" condim="4"/>
-            <geom name="slot_side_2" type="box" pos="0.0 0.09 0" size="0.02 0.03 0.03" rgba="1 0.5 0.5 1" contype="1"
+            <geom name="slot_side_2" type="box" pos="0.0 0.08 0" size="0.02 0.04 0.03" rgba="0.35 0.35 0.35 1" contype="1"
                   conaffinity="1" friction="2 0.1 0.002" condim="4"/>
-            <geom name="slot_side_3" type="box" pos="0.0 -0.09 0" size="0.02 0.03 0.03" rgba="1 0.5 0.5 1" contype="1"
+            <geom name="slot_side_3" type="box" pos="0.0 -0.08 0" size="0.02 0.04 0.03" rgba="0.35 0.35 0.35 1" contype="1"
                   conaffinity="1" friction="2 0.1 0.002" condim="4"/>
         </body>
     </worldbody>

@@ -6,7 +6,7 @@ from gym.spaces import Box, Dict
 import mujoco_py
 from .env_util import get_stat_in_paths, create_stats_ordered_dict, get_asset_full_path
 from .multitask_env import MultitaskEnv
-from .base import SawyerXYZEnv, SawyerCamEnv
+from .base import SawyerXYZEnv, SawyerCamEnv, GoalReaching
 
 ALL_TASKS = [
     "pick",
@@ -15,7 +15,7 @@ ALL_TASKS = [
 ]
 
 
-class SawyerPeg3DEnv(MultitaskEnv, SawyerXYZEnv, SawyerCamEnv):
+class SawyerPeg3DEnv(GoalReaching, SawyerXYZEnv, SawyerCamEnv):
 
     def __init__(
             self,
@@ -35,9 +35,6 @@ class SawyerPeg3DEnv(MultitaskEnv, SawyerXYZEnv, SawyerCamEnv):
             hide_goal_markers=False,
             obj_in_hand=False,
 
-            # x_mode=None,
-            # goal_mode=None,
-
             cam_id=-1,
             width=None,
             height=None,
@@ -49,7 +46,6 @@ class SawyerPeg3DEnv(MultitaskEnv, SawyerXYZEnv, SawyerCamEnv):
 
         model_name = get_asset_full_path(f'sawyer_peg_3d.xml')
 
-        MultitaskEnv.__init__(self)
         SawyerXYZEnv.__init__(self, model_name=model_name, **kwargs)
         SawyerCamEnv.__init__(self, cam_id=cam_id, width=width, height=height)
 
@@ -115,58 +111,14 @@ class SawyerPeg3DEnv(MultitaskEnv, SawyerXYZEnv, SawyerCamEnv):
         camera.elevation = -25
         camera.azimuth = -45
 
-    def step(self, action):
-        self.set_xyz_action(action[:3])
-        # todo: sticky clipper
-        clipper = action[3]
+    # used to produce flattened vector ob['x']
+    FLAT_KEYS = "hand", "gripper"
 
-        if clipper > 0:
-            self.clipper = 1
-        elif clipper < 0:
-            self.clipper = -1
-
-        self.do_simulation((self.clipper, -self.clipper))
-        # The marker seems to get reset every time you do a simulation
-        # self._set_goal_marker()
-        ob = self._get_obs()
-        reward = self.compute_reward(action, ob)
-        info = self._get_info(ob)
-        done = False
-        return ob, reward, done, info
-
-    def _get_obs(self):
-        e = self.get_endeff_pos()
-        dot = self.get_endeff_vel()
-        b = self.get_slot_pos()
-        l, r = self.get_gripper_pos()
-        flat_obs = np.concatenate((e, b, dot))
-
-        obs = dict(
-            observation=flat_obs,
-            # desired_goal=self._state_goal,
-            achieved_goal=flat_obs[:6],
-            state_observation=flat_obs,
-            # state_desired_goal=self._state_goal,
-            state_achieved_goal=flat_obs[:6],
-            # state_delta=flat_obs[:6] - self._state_goal,
-            state_touch_distance=flat_obs[:3] - [0, 0, 0.03] - flat_obs[3:6],
-            state_gripper=np.concatenate([l[:2] - e[:2], r[:2] - e[:2]])
+    def state_dict(self):
+        return dict(
+            hand=self.get_endeff_pos(),
+            gripper=self.get_gripper_state(),
         )
-        return obs
-
-    PICK_REACH_KEYS = ('pick_reach_sparse', 'pick_reach_dense',)
-
-    def _get_info(self, ob):
-        # achieved_goals = ob['state_achieved_goal']
-        # desired_goals = ob['state_desired_goal']
-        # obj_pos = achieved_goals[3:6]
-        # obj_goals = desired_goals[3:6]
-        # if self.reward_type in self.PICK_REACH_KEYS:
-        #     obj_dist = np.linalg.norm(obj_goals - obj_pos, axis=-1)
-        #     is_successful = obj_dist < 0.02
-        #     return dict(success=is_successful)
-        # else:
-        return {}
 
     def get_slot_pos(self):
         return self.data.get_body_xpos('slot').copy()
@@ -176,22 +128,21 @@ class SawyerPeg3DEnv(MultitaskEnv, SawyerXYZEnv, SawyerCamEnv):
         qvel = self.data.qvel.flat.copy()
         offset = obj_id * 7
         qpos[9 + offset:12 + offset] = pos.copy()
-        # offset = obj_id * 6
         # qvel[9 + offset:12 + offset] = 0
         self.set_state(qpos, qvel)
+
+    def _set_bodies(self):
+        self._set_slot_xyz(self.obj_pos)
 
     # todo: might need to change the mode.
     def reset_model(self, mode=None):
         """Provide high-level `mode` for sampling types of goal configurations."""
-        # note: can remove.
-        goal = self.sample_goal()
-        self._state_goal = goal['state_desired_goal']
-        # self._set_goal_marker()
+        self.sim.reset()
 
-        obj_pos = self.obj_space.sample()
-        self._set_slot_xyz(obj_pos)
+        self.obj_pos = self.obj_space.sample()
+        self._set_slot_xyz(self.obj_pos)
 
-        rd = np.random.rand()
+        rd = self.np_random.rand()
         if mode is None:
             if rd < 0.90:
                 mode = 'hover'
@@ -210,195 +161,26 @@ class SawyerPeg3DEnv(MultitaskEnv, SawyerXYZEnv, SawyerCamEnv):
 
             self.clipper = 1  # always close the pincher
 
-            hand_pos = obj_pos + [0, 0, 0.1]
+            hand_pos = self.obj_pos + [0, 0, 0.1]
             self._reset_hand(hand_pos, [1, -1])
-            hand_pos = obj_pos + [0, 0, 0.03]
+            hand_pos = self.obj_pos + [0, 0, 0.03]
             self._reset_hand(hand_pos, [1, -1])
         else:
             raise NotImplementedError(f"{mode} is not supported")
 
-        return self._get_obs()
+        # print("hand", self.data.get_body_xpos("hand"))
+        # self._set_slot_xyz(self.obj_pos)
+        return self.get_obs()
 
-    def put_obj_in_hand(self, obj_id=0):
-        new_obj_pos = self.data.get_site_xpos('endEffector')
-        new_obj_pos[1] -= 0.01
-        for i in range(5):
-            self.do_simulation([1, -1])
-        self._set_obj_xyz(new_obj_pos, obj_id)
-
-    def set_to_goal(self, goal, obj_id=0):
-        state_goal = goal['state_desired_goal']
-        hand_goal = state_goal[:3]
-        for _ in range(30):
-            self.data.set_mocap_pos('mocap', self.hand_init_pos)
-            self.data.set_mocap_quat('mocap', self.effector_quat)
-            # keep gripper closed
-            self.do_simulation([1, -1])
-        self._set_obj_xyz(state_goal[3:6], obj_id)
-        self.sim.forward()
+    # def step(self, act):
+    #     # info: not setting the slot here causes the slot to offset, leading to insertion failures.
+    #     self._set_slot_xyz(self.obj_pos)
+    #     ts = GoalReaching.step(self, act)
+    #     return ts
 
     """
     Multitask functions
     """
-
-    def get_goal(self):
-        return {
-            'desired_goal': self._state_goal,
-            'state_desired_goal': self._state_goal,
-        }
-
-    def sample_goals(self, batch_size, p_obj_in_hand=0.5):
-        if self.fixed_goal is not None:
-            goals = np.repeat(self.fixed_goal.copy()[None], batch_size, 0)
-        else:
-            goals = np.random.uniform(
-                self.hand_obj_space.low,
-                self.hand_obj_space.high,
-                size=(batch_size, self.hand_obj_space.low.size),
-            )
-        # num_objs_in_hand = int(batch_size * p_obj_in_hand)
-        # # Put object in hand
-        # goals[:num_objs_in_hand, 3:] = goals[:num_objs_in_hand, :3].copy()
-        # goals[:num_objs_in_hand, 4] -= 0.01
-        # # Put object one the table (not floating)
-        # goals[num_objs_in_hand:, 5] = self.obj_init_pos[2]
-        return {
-            'desired_goal': goals,
-            'state_desired_goal': goals,
-        }
-
-    def compute_rewards(self, actions, obs):
-        return [0] * len(actions)
-        # achieved_goals = obs['state_achieved_goal']
-        # desired_goals = obs['state_desired_goal']
-        # assert np.isclose(obs['state_achieved_goal'], obs['observation'][:, :6]).all(), 'need to be close'
-        # gripper_state = obs['state_gripper']
-        # hand_pos = achieved_goals[:, :3]
-        # obj_pos = achieved_goals[:, 3:6]
-        # hand_goals = desired_goals[:, :3]
-        # obj_goals = desired_goals[:, 3:6]
-        # hand_vel = achieved_goals[:, 6:]
-        #
-        # hand_distances = np.linalg.norm(hand_goals - hand_pos, axis=1)
-        # obj_distances = np.linalg.norm(obj_goals - obj_pos, axis=1)
-        # hand_and_obj_distances = hand_distances + obj_distances
-        # touch_distances = np.linalg.norm(hand_pos - obj_pos, axis=1)
-        # touch_and_obj_distance = touch_distances + obj_distances
-        #
-        # if self.reward_type is None:
-        #     r = [0.0] * len(obs)
-        # elif self.reward_type == 'hand_distance':
-        #     r = -hand_distances
-        # elif self.reward_type == 'hand_success':
-        #     r = -(hand_distances < self.indicator_threshold).astype(float)
-        # elif self.reward_type == 'obj_distance':
-        #     r = -obj_distances
-        # elif self.reward_type == 'obj_success':
-        #     r = -(obj_distances < self.indicator_threshold).astype(float)
-        # elif self.reward_type == 'hand_and_obj_distance':
-        #     r = -hand_and_obj_distances
-        # elif self.reward_type == 'hand_and_obj_success':
-        #     r = -(hand_and_obj_distances < self.indicator_threshold).astype(float)
-        # elif self.reward_type == 'touch_distance':
-        #     r = -touch_distances
-        # elif self.reward_type == 'touch_success':
-        #     r = -(touch_distances < self.indicator_threshold).astype(float)
-        # elif self.reward_type == 'touch_and_obj_distance':
-        #     r = -touch_and_obj_distance
-        # # start of Ge's shaped rewards
-        # elif self.reward_type == 'reach_dense':
-        #     r = -hand_distances
-        # elif self.reward_type == 'hover_dense':
-        #     _ = obj_pos - hand_pos + [0, 0, 0.03] + [0, 0, 0.05]
-        #     _ = np.linalg.norm(_, axis=1)
-        #     r = -_
-        # elif self.reward_type == 'touch_dense':
-        #     offset = np.zeros_like(hand_pos)
-        #     offset[:, -1] = - 0.03
-        #     offset[:, :2] = (gripper_state[:, :2] + gripper_state[:, 2:]) / 2
-        #     _ = obj_pos - (hand_pos + offset)
-        #     touch_distances = np.linalg.norm(_, axis=1)
-        #     touch_distances_xy = np.linalg.norm(_[:, :2], axis=1)
-        #     gripper_opening = np.linalg.norm(gripper_state[:, :2] - gripper_state[:, 2:])
-        #     dh = 0.1 - hand_pos[:, -1]
-        #     h = hand_pos[:, -1] - 0.04 - 0.03
-        #     opening = (gripper_opening - 0.04) / 2 + h * 1
-        #     r = -touch_distances - (0 if touch_distances_xy < opening else 10) * np.maximum(dh, 0)
-        # # todo: make prong open
-        # elif self.reward_type == 'push_dense':
-        #     _ = hand_pos - [0, 0, 0.03] - obj_pos
-        #     touch_distances = np.linalg.norm(_, axis=1)
-        #     r = -touch_distances - obj_distances
-        # elif self.reward_type == 'pick_dense':
-        #     shape_fn = lambda x: np.select([x > -0.3], [10 * (x + 0.3) ** 2 + x], x)
-        #     offset = np.zeros_like(hand_pos)
-        #     offset[:, -1] = - 0.03
-        #     offset[:, :2] = (gripper_state[:, :2] + gripper_state[:, 2:]) / 2
-        #     _ = obj_pos - (hand_pos + offset)
-        #     touch_distances = np.linalg.norm(_, axis=1)
-        #     touch_distances_xy = np.linalg.norm(_[:, :2], axis=1)
-        #     gripper_opening = np.linalg.norm(gripper_state[:, :2] - gripper_state[:, 2:])
-        #     dh = 0.083 - hand_pos[:, -1]
-        #     opening = 0.02
-        #     height_penalty = (-10 if touch_distances_xy > opening else 0) * np.maximum(dh, 0)
-        #     grip_reward = (5 * (0.1 - gripper_opening)) if touch_distances_xy < opening and (
-        #             hand_pos[:, -1] - obj_pos[:, -1]) < 0.065 else ((gripper_opening - 0.1) * 5)
-        #     # add all rewards
-        #     r = shape_fn(-touch_distances)
-        #     r += height_penalty
-        #     r += grip_reward
-        # elif self.reward_type == 'pick_reach_dense':
-        #     shape_fn = lambda x: np.select([x > -0.3], [10 * (x + 0.3) ** 2 + x], x)
-        #     offset = np.zeros_like(hand_pos)
-        #     offset[:, -1] = - 0.03
-        #     offset[:, :2] = (gripper_state[:, :2] + gripper_state[:, 2:]) / 2
-        #     _ = obj_pos - (hand_pos + offset)
-        #     touch_distances = np.linalg.norm(_, axis=1)
-        #     touch_distances_xy = np.linalg.norm(_[:, :2], axis=1)
-        #     gripper_opening = np.linalg.norm(gripper_state[:, :2] - gripper_state[:, 2:])
-        #     dh = 0.083 - hand_pos[:, -1]
-        #     opening = 0.02
-        #     height_penalty = (-10 if touch_distances_xy > opening else 0) * np.maximum(dh, 0)
-        #     obj_reward = -np.minimum(obj_distances, 1.5)  # clip in case of block falling off the table.
-        #     grip_reward = (5 * (0.1 - gripper_opening)) if touch_distances_xy < opening and (
-        #             hand_pos[:, -1] - obj_pos[:, -1]) < 0.065 else ((gripper_opening - 0.1) * 5)
-        #     # add all rewards
-        #     r = shape_fn(-touch_distances)
-        #     r += height_penalty
-        #     r += grip_reward
-        #     r += obj_reward * 5
-        # elif self.reward_type == 'pick_place_dense':
-        #     raise NotImplemented
-        # # end of Ge's shaped rewards
-        # else:
-        #     raise NotImplementedError("Invalid/no reward type.")
-        # return r
-
-    def get_diagnostics(self, paths, prefix=''):
-        statistics = OrderedDict()
-        for stat_name in [
-            'hand_distance',
-            'obj_distance',
-            'hand_and_obj_distance',
-            'touch_distance',
-            'hand_success',
-            'obj_success',
-            'hand_and_obj_success',
-            'touch_success',
-        ]:
-            stat_name = stat_name
-            stat = get_stat_in_paths(paths, 'env_infos', stat_name)
-            statistics.update(create_stats_ordered_dict(
-                '%s%s' % (prefix, stat_name),
-                stat,
-                always_show_all_stats=True,
-            ))
-            statistics.update(create_stats_ordered_dict(
-                'Final %s%s' % (prefix, stat_name),
-                [s[-1] for s in stat],
-                always_show_all_stats=True,
-            ))
-        return statistics
 
     def get_env_state(self):
         base_state = super().get_env_state()
@@ -427,116 +209,21 @@ def pick_place_env(**kwargs):
                        goal_keys=('state_desired_goal',))
 
 
-# note: kwargs are not passed in to the constructor when entry_point is a function.
-# register(
-#     id="Reach-v0",
-#     entry_point=pick_place_env,
-#     kwargs=dict(frame_skip=5, reward_type="reach_dense",
-#                 mocap_low=(-0.05, 0.35, 0.05),
-#                 mocap_high=(0.45, 0.7, 0.35),
-#                 obj_low=(0.05, 0.45, 0.02),
-#                 obj_high=(0.35, 0.6, 0.02)
-#                 ),
-#     max_episode_steps=100,
-#     reward_threshold=-3.75,
-# )
-#
-# register(
-#     id="Hover-v0",
-#     entry_point=pick_place_env,
-#     # confined to the 2D plane.
-#     kwargs=dict(frame_skip=5, reward_type="hover_dense",
-#                 mocap_low=(-0.05, 0.35, 0.05),
-#                 mocap_high=(0.45, 0.7, 0.35),
-#                 obj_low=(0.05, 0.45, 0.02),
-#                 obj_high=(0.35, 0.6, 0.02)
-#                 ),
-#     max_episode_steps=100,
-#     reward_threshold=-3.75,
-# )
-# register(
-#     id="HoverRotated-v0",
-#     entry_point=pick_place_env,
-#     # confined to the 2D plane.
-#     kwargs=dict(frame_skip=5, reward_type="hover_dense",
-#                 effector_quat=(0.5, -0.5, 0.5, 0.5,),
-#                 mocap_low=(-0.05, 0.35, 0.05),
-#                 mocap_high=(0.45, 0.7, 0.35),
-#                 obj_low=(0.05, 0.45, 0.02),
-#                 obj_high=(0.35, 0.6, 0.02)
-#                 ),
-#     max_episode_steps=100,
-#     reward_threshold=-3.75,
-# )
-# register(
-#     id="Touch-v0",
-#     entry_point=pick_place_env,
-#     # confined to the 2D plane.
-#     kwargs=dict(frame_skip=5, reward_type="touch_dense",
-#                 mocap_low=(-0.05, 0.35, 0.05),
-#                 mocap_high=(0.45, 0.7, 0.35),
-#                 obj_low=(0.05, 0.45, 0.02),
-#                 obj_high=(0.35, 0.6, 0.02)
-#                 ),
-#     max_episode_steps=100,
-#     reward_threshold=-3.75,
-# )
-# register(
-#     id="Push-v0",
-#     entry_point=pick_place_env,
-#     # confined to the 2D plane.
-#     kwargs=dict(frame_skip=5, reward_type="push_dense",
-#                 mocap_low=(-0.05, 0.35, 0.05),
-#                 mocap_high=(0.45, 0.7, 0.35),
-#                 obj_low=(0.05, 0.45, 0.02),
-#                 obj_high=(0.35, 0.6, 0.02)
-#                 ),
-#     max_episode_steps=100,
-#     reward_threshold=-3.75,
-# )
-# register(
-#     id="Pick-v0",
-#     entry_point=pick_place_env,
-#     # Block goal can be in the air.
-#     kwargs=dict(frame_skip=5, reward_type="pick_dense",
-#                 mocap_low=(-0.05, 0.35, 0.035),
-#                 mocap_high=(0.45, 0.7, 0.35),
-#                 obj_low=(0.05, 0.45, 0.02),
-#                 obj_high=(0.35, 0.6, 0.02)
-#                 ),
-#     max_episode_steps=100,
-#     reward_threshold=-3.75,
-# )
-# register(
-#     id="PickReach-v0",
-#     entry_point=SawyerPickAndPlaceEnv,
-#     # Block goal can be in the air.
-#     kwargs=dict(frame_skip=5,
-#                 reward_type="pick_reach_dense",
-#                 mocap_low=(-0.05, 0.35, 0.035),
-#                 mocap_high=(0.45, 0.7, 0.35),
-#                 obj_low=(0.05, 0.45, 0.1),
-#                 obj_high=(0.35, 0.6, 0.30),
-#                 shaped_init=0.5,
-#                 ),
-#     # max_episode_steps=100,
-#     reward_threshold=-3.75,
-# )
-
 try:
     del gym.envs.registration.registry.env_specs["Peg3D-v0"]
 except:
     pass
+
 gym.envs.register(
     id="Peg3D-v0",
     entry_point=SawyerPeg3DEnv,
     # Place goal has to be on the surface.
     kwargs=dict(frame_skip=5,
                 # reward_type="pick_place_dense",
-                mocap_low=(-0.1, 0.4, 0.05),
-                mocap_high=(0.1, 0.6, 0.22),
-                obj_low=(0.0, 0.5, 0.02),
-                obj_high=(0.0, 0.5, 0.02)
+                mocap_low=(-0.1, 0.45, 0.05),
+                mocap_high=(0.1, 0.55, 0.22),
+                obj_low=(0.0, 0.5, 0.03),
+                obj_high=(0.0, 0.5, 0.03)
                 ),
     # max_episode_steps=100,
     reward_threshold=-3.75,
