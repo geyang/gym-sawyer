@@ -172,8 +172,9 @@ class SawyerPickAndPlaceEnv(GoalReaching, SawyerXYZEnv, SawyerCamEnv):
             self._reset_hand(hand_pos)
             self.put_obj_in_hand()
         elif mode == 'on-top':
-            self.obj_pos_2[-1] = np.max([0.08, self.hand_space.sample()[-1]])
-            self._reset_hand(self.obj_pos_2)
+            pos = self.obj_pos_2.copy()
+            pos[-1] = np.max([0.08, self.hand_space.sample()[-1]])
+            self._reset_hand(pos)
             self.put_obj_in_hand()
         else:
             raise NotImplementedError(f"{mode} is not supported")
