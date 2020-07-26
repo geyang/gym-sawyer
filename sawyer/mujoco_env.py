@@ -1,5 +1,7 @@
 import os
 import sys
+from contextlib import contextmanager
+
 import numpy as np
 from os import path
 import gym
@@ -232,6 +234,13 @@ class MujocoEnv(gym.Env):
             self.sim.data.qpos.flat,
             self.sim.data.qvel.flat
         ])
+
+    @contextmanager
+    def with_color(self, id, rgba=None):
+        old_rgba = self.sim.model.geom_rgba[id].copy()
+        self.sim.model.geom_rgba[id] = rgba or 0
+        yield
+        self.sim.model.geom_rgba[id] = old_rgba
 
     # def get_image(self, width=84, height=84, camera_name=None):
     #     return self.sim.render(
