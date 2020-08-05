@@ -140,7 +140,7 @@ class SawyerPickAndPlaceEnv(GoalReaching, SawyerXYZEnv, SawyerCamEnv):
         # always drop object 0 from the air.
         obj_pos = self.obj_space.sample()
         self._set_obj_xyz(obj_pos)
-        print("object:", obj_pos, self.obj_space)
+        # print("object:", obj_pos, self.obj_space)
 
         rd = self.np_random.rand()
         if mode is None:
@@ -155,7 +155,7 @@ class SawyerPickAndPlaceEnv(GoalReaching, SawyerXYZEnv, SawyerCamEnv):
 
         if mode == 'hover':  # hover
             hand_pos = self.hand_space.sample()
-            print("hand", hand_pos, self.hand_space)
+            # print("hand", hand_pos, self.hand_space)
             # note: this is the only free wavering mode
             if self.gripper_init is not None:
                 self.gripper = self.gripper_init

@@ -29,7 +29,6 @@ with doc, doc.row():
     img = env.render('glamor', width=640, height=240)
     doc.image(img, "figures/push_glamor.png")
 
-
 doc @ """
 ## All Views (`cam_id == 0`)
 
@@ -49,6 +48,7 @@ This view watched down from above.
 """
 with doc, doc.row():
     import numpy as np
+
     cam_id = 0
     env = gym.make('sawyer:Push-v0', cam_id=cam_id, mode="rgb", num_objs=1)
     env = GoalImg(env)
@@ -57,5 +57,5 @@ with doc, doc.row():
         obs = env.reset()
         images.append(obs['img'])
 
-    doc.image(np.array(images).min(0).transpose([1, 2, 0]), f"figures/push_rho_0.png")
-    # doc.print(*obs.keys(), sep=",\n")
+    doc.image(np.array(images).min(0).transpose([1, 2, 0]), f"figures/push_rho_0.png", caption="Distribution")
+    doc.image(obs['goal_img'].transpose([1, 2, 0]), f"figures/push_goal.png", caption="Goal")

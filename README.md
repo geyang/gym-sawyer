@@ -17,6 +17,10 @@ pip install git+https://github.com/geyang/gym-sawyer
 
 ## Usage Example
 
+Please refer to the [specs](./specs) folder for detailed
+usage examples. These examples and notes are generated
+programmatically as part of the test suite.
+
 ```python
 import gym
 
