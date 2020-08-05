@@ -99,7 +99,7 @@ class SawyerPeg3DEnv(GoalReaching, SawyerXYZEnv, SawyerCamEnv):
             ('state_gripper', self.gripper_space),
         ])
 
-    def viewer_setup(self, cam_id=None):
+    def viewer_setup(self):
 
         camera = self.viewer.cam
 

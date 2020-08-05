@@ -9,26 +9,26 @@
             <joint name="obj_0" type="free" limited='false' damping="0" armature="0"/>
             <inertial pos="0 0 0" mass="0.01" diaginertia="100000 100000 100000"/>
             <geom name="obj_0" type="box" pos="0 0 0" size="0.02 0.02 0.02" rgba="0.2 0.5 0.9 1" contype="1"
-                  conaffinity="1" friction="2 0.1 0.002" condim="4"/>
+                  conaffinity="1" friction="2 0.1 0.002" condim="4" material="non-reflective"/>
             <site name="obj_0" pos="0 0 0" size="0.01"/>
         </body>
         <body name="obj_1" pos="-0.1 0.6 0.02">
             <joint name="obj_1" type="free" limited='false' damping="0" armature="0"/>
             <inertial pos="0 0 0" mass="0.01" diaginertia="100000 100000 100000"/>
-            <geom name="obj_1" type="box" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0.5 0.5 0.8" contype="1"
-                  conaffinity="1" friction="2 0.1 0.002" condim="4"/>
+            <geom name="obj_1" type="box" pos="0 0 0" size="0.02 0.02 0.02" rgba="0.3 0.8 0.3 0.8" contype="1"
+                  conaffinity="1" friction="2 0.1 0.002" condim="4" material="non-reflective"/>
         </body>
         <body name="obj_2" pos="-0.1 0.6 0.02">
             <joint name="obj_2" type="free" limited='false' damping="0" armature="0"/>
             <inertial pos="0 0 0" mass="0.01" diaginertia="100000 100000 100000"/>
-            <geom name="obj_2" type="box" pos="0 0 0" size="0.02 0.02 0.02" rgba="0.3 0.8 0.3 0.8" contype="1"
-                  conaffinity="1" friction="2 0.1 0.002" condim="4"/>
+            <geom name="obj_2" type="box" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0.5 0.5 0.8" contype="1"
+                  conaffinity="1" friction="2 0.1 0.002" condim="4" material="non-reflective"/>
         </body>
         <body name="obj_3" pos="0.2 0.6 0.02">
             <joint name="obj_3" type="free" limited='false' damping="0" armature="0"/>
             <inertial pos="0 0 0" mass="0.01" diaginertia="100000 100000 100000"/>
             <geom name="obj_3" type="box" pos="0 0 0" size="0.02 0.02 0.02" rgba="0.4 0.4 0.4 1" contype="1"
-                  conaffinity="1" friction="2 0.1 0.002" condim="4"/>
+                  conaffinity="1" friction="2 0.1 0.002" condim="4" material="non-reflective"/>
         </body>
     </worldbody>
     <sensor>

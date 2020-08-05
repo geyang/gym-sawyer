@@ -84,6 +84,11 @@ class MujocoEnv(gym.Env):
         This method is called when the viewer is initialized and after every reset
         Optionally implement this method, if you need to tinker with camera position
         and so forth.
+
+        The camera_id flag should **never** be used directly when calling from inside.
+        you should only use the camera_id flag when setting the view imperatively
+        from the outside, for example when you want to change the camera_id to a
+        particular one.
         """
         pass
 
@@ -165,7 +170,7 @@ class MujocoEnv(gym.Env):
             camera.fixedcamid = cam_id
             camera.type = mujoco_py.generated.const.CAMERA_FIXED
 
-        self.viewer_setup(self.cam_id)
+        self.viewer_setup()
         return self.viewer
 
     def render(self, mode=None, width=None, height=None, cam_id=None):
