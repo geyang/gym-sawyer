@@ -34,7 +34,7 @@ for cam_id in [-1, 0, 1]:
     obs = env.reset()
     doc.image(obs["img"].transpose([1, 2, 0]), f"figures/push_{cam_id}.png", caption=f"cam_id={cam_id}")
 ```
-<div style="flex-wrap:wrap; display:flex; flex-direction:row; item-align:center;"><div><img style="margin:0.5em;" src="figures/push_-1.png" /><div style="text-align: center">cam_id=-1</div></div><div><img style="margin:0.5em;" src="figures/push_0.png" /><div style="text-align: center">cam_id=0</div></div><div><img style="margin:0.5em;" src="figures/push_1.png" /><div style="text-align: center">cam_id=1</div></div></div>
+<div style="flex-wrap:wrap; display:flex; flex-direction:row; item-align:center;"><div><div style="text-align: center">cam_id=-1</div><img style="margin:0.5em;" src="figures/push_-1.png" /></div><div><div style="text-align: center">cam_id=0</div><img style="margin:0.5em;" src="figures/push_0.png" /></div><div><div style="text-align: center">cam_id=1</div><img style="margin:0.5em;" src="figures/push_1.png" /></div></div>
 
 ## Distribution of blocks
 
@@ -51,4 +51,4 @@ for i in trange(10):
     obs = env.reset()
     images.append(obs['img'])
 ```
-<div style="flex-wrap:wrap; display:flex; flex-direction:row; item-align:center;"><div><img style="margin:0.5em;" src="figures/push_rho_0.png" /><div style="text-align: center">Distribution</div></div><div><img style="margin:0.5em;" src="figures/push_goal.png" /><div style="text-align: center">Goal</div></div></div>
+<div style="flex-wrap:wrap; display:flex; flex-direction:row; item-align:center;"><div><div style="text-align: center">Distribution</div><img style="margin:0.5em;" src="figures/push_rho_0.png" /></div><div><div style="text-align: center">Goal Image</div><img style="margin:0.5em;" src="figures/push_goal.png" /></div></div>

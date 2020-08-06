@@ -58,4 +58,4 @@ with doc, doc.row():
         images.append(obs['img'])
 
     doc.image(np.array(images).min(0).transpose([1, 2, 0]), f"figures/push_rho_0.png", caption="Distribution")
-    doc.image(obs['goal_img'].transpose([1, 2, 0]), f"figures/push_goal.png", caption="Goal")
+    doc.image(obs['goal_img'].transpose([1, 2, 0]), f"figures/push_goal.png", caption="Goal Image")
