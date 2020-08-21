@@ -65,7 +65,7 @@ def test_peg3d_reward():
             # gripper dimension does not matter
             act = obs['slot'] - obs['hand']
             obs, r, done, info = env.step(np.array([*act, 0]) * 10)
-            img = env.render('rgb')
+            img = env.render('rgb', width=240, height=240)
             frames.append(img)
             if done:
                 break
@@ -73,5 +73,5 @@ def test_peg3d_reward():
             # raise RuntimeError("Reach failed to terminate")
             pass
 
-    doc.video(frames, f"videos/peg3d_test.mp4")
+    doc.video(frames, f"videos/peg3d_test.gif")
     doc.flush()
