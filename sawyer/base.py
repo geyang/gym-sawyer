@@ -20,8 +20,11 @@ class SawyerMocapBase(MujocoEnv, metaclass=abc.ABCMeta):
     mocap for XYZ control.
     """
 
-    def __init__(self, model_name, frame_skip=None, **kwargs):
-        MujocoEnv.__init__(self, model_name, frame_skip=5 if frame_skip is None else frame_skip, **kwargs)
+    def __init__(self, model_name, frame_skip=1, **kwargs):
+        """
+        :param frame_skip: always 1, to avoid penetration
+        """
+        MujocoEnv.__init__(self, model_name, frame_skip=frame_skip, **kwargs)
         # Resets the mocap welds that we use for actuation.
         sim = self.sim
         if sim.model.nmocap > 0 and sim.model.eq_data is not None:
@@ -96,6 +99,10 @@ class SawyerMocapBase(MujocoEnv, metaclass=abc.ABCMeta):
 
 
 class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
+    # good initial position for the arm
+    init_qpos = [0.37264002, -0.49957754, -0.7581753, 1.03654235, -2.45524382, -1.26085342,
+                 -0.12306606, 0.03120172, -0.03120171]
+
     def __init__(
             self,
             *args,
@@ -104,7 +111,7 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
             # this is the attitude of the end effector
             gripper=None,  # initial gripper state
             effector_quat=(1, 0, 1, 0),
-            action_scale=2 / 100,
+            action_scale=1 / 100,
             show_mocap=True,
             r=0.02,  # this is the termination threshold
             obs_keys=None,
@@ -197,17 +204,27 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
         self.data.set_mocap_pos('mocap', new_mocap_pos)
         self.data.set_mocap_quat('mocap', self.effector_quat)
 
-    def _reset_hand(self, pos=None, gripper=None, steps=30):
-        if pos is None:
-            pos = self.hand_init_pos
+    def _reset_hand(self, pos=None, gripper=None, steps=None):
+        """use control loop"""
         self.data.set_mocap_pos('mocap', pos)
         self.data.set_mocap_quat('mocap', self.effector_quat)
-        self.do_simulation(gripper, n_frames=steps)
+        for step in range(steps or 500):
+            self.do_simulation(gripper, n_frames=1)
+            hand = self.get_endeff_pos()
+            d = np.linalg.norm(hand - pos)
+            if d < 0.008:
+                break
+        else:
+            if steps is None:
+                raise RuntimeError("can not reset hand to", pos,
+                                   "current position is", hand,
+                                   "distance is", d)
 
     def reset_model(self, hand_pos=None, to_goal=None):
         """Provide high-level `mode` for sampling types of goal configurations."""
-        self.sim.reset()
+        self._fast_reset()
 
+        # self._fast_reset()
         # always drop object 0 from the air.
         if hand_pos is not None:
             if self.gripper_init is not None:
@@ -226,6 +243,13 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
         self._reset_hand(hand_pos, [self.gripper, -self.gripper])
 
         return self.get_obs()
+
+    def _fast_reset(self):
+        self.sim.reset()
+        qpos = np.zeros_like(self.sim.data.qpos.flat)
+        qpos[:self.init_qpos.__len__()] = self.init_qpos
+        self.set_state(qpos, np.zeros(self.model.nv))
+        self.sim.forward()
 
     def reset(self):
         """We call self.reset_model for a single reset (it is currently expensive)"""
@@ -256,14 +280,14 @@ class SawyerXYZEnv(SawyerMocapBase, metaclass=abc.ABCMeta):
 
 
 class SawyerCamEnv(metaclass=abc.ABCMeta):
-    def __init__(self, *args, cam_id=None, width=100, height=100, **kwargs):
+    def __init__(self, *args, cam_id=-1, width=100, height=100, **kwargs):
         self.cam_id = cam_id
         self.width = width
         self.height = height
 
-    def viewer_setup(self):
+    def viewer_setup(self, cam_id=None):
         """The camera id here is not real."""
-        cam_id = self.cam_id
+        cam_id = self.cam_id if cam_id is None else cam_id
         camera = self.viewer.cam
 
         if cam_id == -1:

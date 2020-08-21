@@ -59,7 +59,7 @@ class SawyerPeg3DEnv(SawyerCamEnv, SawyerXYZEnv):
     # todo: might need to change the mode.
     def reset_model(self, mode=None, to_goal=None):
         """Provide high-level `mode` for sampling types of goal configurations."""
-        self.sim.reset()
+        self._fast_reset()
         mode = mode or (self.goal_mode if to_goal else self.init_mode)
 
         self.slot_pos = self.slot_space.sample()
@@ -76,18 +76,18 @@ class SawyerPeg3DEnv(SawyerCamEnv, SawyerXYZEnv):
 
             self.gripper = self.np_random.choice([-1, 1], size=1)
 
-            hand_pos = self.hand_space.sample()
-            hand_pos += [0, 0, 0.03]
-            self._reset_hand(hand_pos, [1, -1])
+            target = self.hand_space.sample()
+            target += [0, 0, 0.05]
+            self._reset_hand(target, [1, -1])
 
         elif mode == "inserted":
 
             self.gripper = 1  # always close the pincher
 
-            hand_pos = self.slot_pos + [0, 0, 0.1]
-            self._reset_hand(hand_pos, [1, -1])
-            hand_pos = self.slot_pos + [0, 0, 0.03]
-            self._reset_hand(hand_pos, [1, -1])
+            target = self.slot_pos + [0, 0, 0.1]
+            self._reset_hand(target, [1, -1])
+            target = [*self.slot_pos[:2], 0.05]
+            self._reset_hand(target, [1, -1])
         else:
             raise NotImplementedError(f"{mode} is not supported")
 
@@ -105,8 +105,8 @@ gym.envs.register(
                 goal_mode="inserted",
                 mocap_low=(-0.1, 0.45, 0.05),
                 mocap_high=(0.1, 0.55, 0.40),
-                slot_low=(0.0, 0.5, 0.03),
-                slot_high=(0.0, 0.5, 0.03)
+                slot_low=(0.0, 0.5, 0.025),
+                slot_high=(0.0, 0.5, 0.025)
                 ),
     # max_episode_steps=100,
     reward_threshold=-3.75,

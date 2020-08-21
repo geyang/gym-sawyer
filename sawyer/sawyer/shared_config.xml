@@ -1,48 +1,41 @@
 <?xml version="1.0" encoding="utf-8"?>
 <mujoco>
-    <asset>
-        <texture type="skybox" builtin="gradient" rgb1="0.9 0.7 0.9" rgb2="0.94 0.97 0.97" width="2" height="2"/>
-        <material name="arm_mat" shininess="0.1" specular="0." reflectance="0" rgba="0.65 0.28 0.28 0.8"/>
-        <material name="non-reflective" shininess="0" specular="0." reflectance="0" rgba="0.65 0.28 0.28 0.8"/>
-        <mesh name="pedestal" file="pedestal.stl"/>
-        <mesh name="base" file="base.stl"/>
-        <mesh name="l0" file="l0.stl"/>
-        <mesh name="head" file="head.stl"/>
-        <mesh name="l1" file="l1.stl"/>
-        <mesh name="l2" file="l2.stl"/>
-        <mesh name="l3" file="l3.stl"/>
-        <mesh name="l4" file="l4.stl"/>
-        <mesh name="l5" file="l5.stl"/>
-        <mesh name="l6" file="l6.stl"/>
-        <mesh name="eGripperBase" file="eGripperBase.stl"/>
-    </asset>
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.9 0.7 0.9" rgb2="0.94 0.97 0.97" width="2" height="2"/>
+    <material name="arm_mat" shininess="0.1" specular="0." reflectance="0" rgba="0.65 0.28 0.28 0.8"/>
+    <material name="non-reflective" shininess="0" specular="0." reflectance="0" rgba="0.65 0.28 0.28 0.8"/>
+    <mesh name="pedestal" file="pedestal.stl"/>
+    <mesh name="base" file="base.stl"/>
+    <mesh name="l0" file="l0.stl"/>
+    <mesh name="head" file="head.stl"/>
+    <mesh name="l1" file="l1.stl"/>
+    <mesh name="l2" file="l2.stl"/>
+    <mesh name="l3" file="l3.stl"/>
+    <mesh name="l4" file="l4.stl"/>
+    <mesh name="l5" file="l5.stl"/>
+    <mesh name="l6" file="l6.stl"/>
+    <mesh name="eGripperBase" file="eGripperBase.stl"/>
+  </asset>
 
-    <visual>
-        <headlight ambient="0.05 0.05 0.05"/>
-    </visual>
+  <visual>
+    <headlight ambient="0.05 0.05 0.05"/>
+  </visual>
 
-    <compiler inertiafromgeom="auto" angle="radian" coordinate="local" eulerseq="XYZ" meshdir="meshes"/>
-    <size njmax="6000" nconmax="6000"/>
-    <option
-            gravity="0 0 -9.81"
-            iterations="50"
-            integrator="Euler"
-            timestep="0.01"
-            cone="elliptic"
-            impratio="3"
-            tolerance="1e-10"/>
-    <default>
-        <joint limited="true"
-               damping="1"
-               stiffness="0"
-               armature=".1"
-               user="0"/>
-        <geom solref="0.02 1" solimp="0.9995 0.9995 0.01" condim="4"/>
-        <motor ctrllimited="true" ctrlrange="-1 1"/>
-        <position ctrllimited="true"/>
-    </default>
+  <compiler inertiafromgeom="auto" angle="radian" coordinate="local" eulerseq="XYZ" meshdir="meshes"/>
+  <size njmax="6000" nconmax="6000"/>
+  <option gravity="0 0 -9.81" iterations="50" integrator="Euler" timestep="0.01" cone="elliptic" impratio="3"
+          tolerance="1e-10"/>
+  <custom>
+    <numeric data="0.058578 -0.523882118 -0.720207486  1.38129910 -2.39196131 -0.990936965 -0.123400890  0.0314192366 -0.0309941931  0.0  0.5  0.0299999993 1.0  0.00000945398917 -0.00000613204155  0.00000742536948" name="init_qpos"/>
+  </custom>
+  <default>
+    <joint limited="true" damping="1" stiffness="0" armature=".1" user="0"/>
+    <geom solref="0.02 1" solimp="0.9995 0.9995 0.01" condim="4"/>
+    <motor ctrllimited="true" ctrlrange="-1 1"/>
+    <position ctrllimited="true"/>
+  </default>
 
-    <equality>
-        <weld body1="mocap" body2="hand" solref="0.02 1"></weld>
-    </equality>
+  <equality>
+    <weld body1="mocap" body2="hand" solref="0.02 1"></weld>
+  </equality>
 </mujoco>

@@ -48,8 +48,6 @@ class MujocoEnv(gym.Env):
             'video.frames_per_second': int(np.round(1.0 / self.dt))
         }
 
-        self.init_qpos = self.sim.data.qpos.ravel().copy()
-        self.init_qvel = self.sim.data.qvel.ravel().copy()
         if set_spaces:
             observation, _reward, done, _info = self.step(np.zeros(self.model.nu))
             assert not done
@@ -80,16 +78,14 @@ class MujocoEnv(gym.Env):
         """
         raise NotImplementedError
 
-    def viewer_setup(self):
+    def viewer_setup(self, cam_id=None):
         """
         This method is called when the viewer is initialized and after every reset
         Optionally implement this method, if you need to tinker with camera position
         and so forth.
 
-        The camera_id flag should **never** be used directly when calling from inside.
-        you should only use the camera_id flag when setting the view imperatively
-        from the outside, for example when you want to change the camera_id to a
-        particular one.
+        The _get_viewer method need to pass in a camera id to this in order to
+        set the view correctly.
         """
         pass
 
@@ -121,7 +117,6 @@ class MujocoEnv(gym.Env):
         if self.sim.data.ctrl is not None and ctrl is not None:
             self.sim.data.ctrl[:] = tuple(ctrl)
         for _ in range(n_frames):
-            self.sim.forward()
             self.sim.step()
 
     def _before_render(self):
@@ -170,7 +165,7 @@ class MujocoEnv(gym.Env):
             camera.fixedcamid = cam_id
             camera.type = mujoco_py.generated.const.CAMERA_FIXED
 
-        self.viewer_setup()
+        self.viewer_setup(cam_id=cam_id)
         return self.viewer
 
     def render(self, mode=None, width=None, height=None, cam_id=None):

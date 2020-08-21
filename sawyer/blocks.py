@@ -17,6 +17,7 @@ geom_xy = {None: 1, 'cylinder': 1, 'box': 2}
 
 class SawyerObjEnv(SawyerCamEnv, SawyerXYZEnv):
 
+
     def __init__(
             self,
             task=None,
@@ -95,7 +96,8 @@ class SawyerObjEnv(SawyerCamEnv, SawyerXYZEnv):
 
     def reset_model(self, mode=None, obj_pos=None, hand_pos=None, to_goal=False):
         """Provide high-level `mode` for sampling types of goal configurations."""
-        self.sim.reset()
+        self._fast_reset()
+
         mode = mode or (self.goal_mode if to_goal else self.init_mode)
 
         if self.num_objs > 1:

@@ -22,7 +22,7 @@ def test_peg3d():
     ## sawyer:Peg3D-v0
     """
     with doc:
-        env = gym.make("sawyer:Peg3D-v0", cam_id=0)
+        env = gym.make("sawyer:Peg3D-v0")
     env.seed(100)
     obs = env.reset()
     with doc("Make sure that the spec agrees with what it returns"):
@@ -40,7 +40,7 @@ def test_peg3d_flat_goal_env():
     To use with RL algorithms, use the FlatGoalEnv wrapper:
     """
     with doc:
-        env = gym.make("sawyer:Peg3D-v0", cam_id=0)
+        env = gym.make("sawyer:Peg3D-v0")
         env = FlatGoalEnv(env)
     env.seed(100)
     obs = env.reset()
@@ -59,19 +59,34 @@ def test_peg3d_reward():
     env.seed(100)
 
     frames = []
-    for ep in trange(10, desc="peg3d test"):
+    obs = env.reset()
+    for step in range(100):
+        # gripper dimension does not matter
+        act = obs['slot'] - obs['hand']
+        obs, r, done, info = env.step(np.array([*act, -1]) * 10)
+        img = env.render('rgb', width=240, height=240)
+        frames.append(img)
+        if done:
+            break
+    else:
+        should_not_terminate = True
+    assert should_not_terminate
+
+    for ep in trange(4, desc="peg3d clipper closed"):
         obs = env.reset()
         for step in range(100):
             # gripper dimension does not matter
-            act = obs['slot'] - obs['hand']
-            obs, r, done, info = env.step(np.array([*act, 0]) * 10)
+            delta = [0, 0, 0.2] if step < 20 else [0, 0, -0.04]
+            act = obs['slot'] - obs['hand'] + delta
+            obs, r, done, info = env.step(np.array([*act, 1]) * 10)
             img = env.render('rgb', width=240, height=240)
             frames.append(img)
             if done:
                 break
         else:
-            # raise RuntimeError("Reach failed to terminate")
-            pass
+            # print(ep, "is no good")
+            raise RuntimeError("Reach failed to terminate")
 
     doc.video(frames, f"videos/peg3d_test.gif")
     doc.flush()
+#
