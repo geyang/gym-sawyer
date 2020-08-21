@@ -518,15 +518,15 @@ class SawyerMixedMultitaskEnv(MultitaskEnv, SawyerXYZEnv):
             ))
         return statistics
 
-    def get_env_state(self):
-        base_state = super().get_env_state()
-        goal = self._state_goal.copy()
-        return base_state, goal
-
-    def set_env_state(self, state):
-        base_state, goal = state
-        super().set_env_state(base_state)
-        self._state_goal = goal
+    # def get_env_state(self):
+    #     base_state = super().get_env_state()
+    #     goal = self._state_goal.copy()
+    #     return base_state, goal
+    #
+    # def set_env_state(self, state):
+    #     base_state, goal = state
+    #     super().set_env_state(base_state)
+    #     self._state_goal = goal
 
 
 def mixed_env(**kwargs):

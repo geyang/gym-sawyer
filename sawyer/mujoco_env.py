@@ -7,6 +7,7 @@ from os import path
 import gym
 from gym import error, spaces
 from gym.utils import seeding
+from termcolor import cprint
 
 try:
     import mujoco_py
@@ -67,7 +68,7 @@ class MujocoEnv(gym.Env):
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
-        return [seed]
+        return seed
 
     # methods to override:
     # ----------------------------
@@ -116,12 +117,11 @@ class MujocoEnv(gym.Env):
     def dt(self):
         return self.model.opt.timestep * self.frame_skip
 
-    def do_simulation(self, ctrl, n_frames=None):
-        if n_frames is None:
-            n_frames = self.frame_skip
+    def do_simulation(self, ctrl, n_frames):
         if self.sim.data.ctrl is not None and ctrl is not None:
-            self.sim.data.ctrl[:] = ctrl
+            self.sim.data.ctrl[:] = tuple(ctrl)
         for _ in range(n_frames):
+            self.sim.forward()
             self.sim.step()
 
     def _before_render(self):
@@ -183,7 +183,7 @@ class MujocoEnv(gym.Env):
         """
         mode = mode or self.mode
         width = width or self.width
-        height = height or self.height
+        height = height or self.height or width
 
         viewer = self._get_viewer(mode, cam_id or self.cam_id)
 

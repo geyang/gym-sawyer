@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mujoco>
+    <include file="shared_config.xml"/>
+    <worldbody>
+        <include file="sawyer_xyz_base.xml"/>
+        <include file="bottom_right_lighting.xml"/>
+        <include file="front_left_lighting.xml"/>
+    </worldbody>
+    <sensor>
+        <touch name='rightclaw_sensor' site='rightEndEffector'/>
+        <touch name='leftclaw_sensor' site='leftEndEffector'/>
+    </sensor>
+    <actuator>
+        <motor ctrllimited="true" ctrlrange="-1 10" gear="6000" joint="r_close"/>
+        <motor ctrllimited="true" ctrlrange="-1 10" gear="6000" joint="l_close"/>
+    </actuator>
+</mujoco>
