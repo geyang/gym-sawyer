@@ -20,7 +20,7 @@ class SawyerMocapBase(MujocoEnv, metaclass=abc.ABCMeta):
     mocap for XYZ control.
     """
 
-    def __init__(self, model_name, frame_skip=1, **kwargs):
+    def __init__(self, model_name, frame_skip=4, **kwargs):
         """
         :param frame_skip: always 1, to avoid penetration
         """

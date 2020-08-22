@@ -77,7 +77,7 @@ class SawyerPeg3DEnv(SawyerCamEnv, SawyerXYZEnv):
             self.gripper = self.np_random.choice([-1, 1], size=1)
 
             target = self.hand_space.sample()
-            target += [0, 0, 0.05]
+            target += [0, 0, 0.1]
             self._reset_hand(target, [1, -1])
 
         elif mode == "inserted":
